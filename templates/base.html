@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %} Auditex - Delais {% endblock %} </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbar for tables */
+        .table-container::-webkit-scrollbar { width: 8px; height: 8px; }
+        .table-container::-webkit-scrollbar-track { background: #f1f1f1; }
+        .table-container::-webkit-scrollbar-thumb { background: #a8a8a8; border-radius: 4px; }
+        .table-container::-webkit-scrollbar-thumb:hover { background: #888; }
+        /* Style for empty formset row */
+        .empty-form { display: none; }
+    </style>
+</head>
+<body class="h-full">
+    {% if user.is_authenticated %}
+    <div x-data="{ open: false }" class="flex h-screen bg-gray-100">
+        <!-- Sidebar -->
+        <div :class="{'block': open, 'hidden': !open}" class="fixed inset-0 z-20 flex-shrink-0 w-64 bg-white shadow-md md:relative md:flex md:flex-col">
+            <div class="flex items-center justify-between h-20 border-b px-4">
+                <a href="{% url 'dashboard' %}" class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                    <span class="ml-2 text-xl font-bold text-gray-800">Auditex - Delais </span>
+                </a>
+                <button @click="open = false" class="md:hidden text-gray-600 hover:text-gray-800">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto">
+                <nav class="flex-1 px-2 py-4 space-y-1">
+                    <a href="{% url 'dashboard' %}" class="nav-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-md {% if request.resolver_match.url_name == 'dashboard' %}bg-gray-200 text-gray-800 font-semibold{% endif %}">
+                        Tableau de bord
+                    </a>
+                    <a href="{% url 'client_list' %}" class="nav-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-md {% if 'client' in request.resolver_match.url_name %}bg-gray-200 text-gray-800 font-semibold{% endif %}">
+                        Clients
+                    </a>
+                    <a href="{% url 'collaborator_list' %}" class="nav-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-md {% if request.resolver_match.url_name == 'collaborator_list' %}bg-gray-200 text-gray-800 font-semibold{% endif %}">
+                        Collaborateurs
+                    </a>
+                </nav>
+            </div>
+             <div class="p-4 border-t">
+                <div class="flex items-center">
+                    <img class="h-10 w-10 rounded-full object-cover bg-gray-200" src="https://placehold.co/100x100/EFEFEF/333333?text={{ user.email|slice:':1'|upper }}" alt="Avatar utilisateur">
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-800">{{ user.get_full_name|default:user.email }}</p>
+                    </div>
+                </div>
+                 <a href="{% url 'account_logout' %}" class="w-full mt-4 flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-md hover:bg-gray-100">
+                    Déconnexion
+                </a>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <header class="flex items-center justify-between p-4 bg-white border-b">
+                 <button @click.stop="open = !open" class="md:hidden text-gray-500">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h1 id="page-title" class="text-2xl font-semibold text-gray-800">{% block page_title %}{% endblock %}</h1>
+                <div></div>
+            </header>
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 md:p-6">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="mb-4 p-4 rounded-md text-sm {% if message.tags == 'success' %}bg-green-100 text-green-800{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}" role="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    {% else %}
+        {% block content_unauthenticated %}{% endblock %}
+    {% endif %}
+
+    <script src="//unpkg.com/alpinejs" defer></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

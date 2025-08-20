@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-md">
+    <form method="post">
+        {% csrf_token %}
+        <div class="space-y-4">
+            <div>
+                <label for="{{ form.raison_sociale.id_for_label }}" class="block text-sm font-medium text-gray-700">Raison Sociale</label>
+                {{ form.raison_sociale }}
+                {{ form.raison_sociale.errors }}
+            </div>
+            <div>
+                <label for="{{ form.numero_if.id_for_label }}" class="block text-sm font-medium text-gray-700">N° d'Identifiant Fiscal (IF)</label>
+                {{ form.numero_if }}
+                {{ form.numero_if.errors }}
+            </div>
+            <div>
+                <label for="{{ form.numero_ice.id_for_label }}" class="block text-sm font-medium text-gray-700">N° d'Identifiant Commun de l'Entreprise (ICE)</label>
+                {{ form.numero_ice }}
+                {{ form.numero_ice.errors }}
+            </div>
+            <div>
+                <label for="{{ form.adresse.id_for_label }}" class="block text-sm font-medium text-gray-700">Adresse</label>
+                {{ form.adresse }}
+                {{ form.adresse.errors }}
+            </div>
+        </div>
+        <div class="mt-6 flex items-center justify-end space-x-4">
+            <a href="{% url 'client_list' %}" class="text-gray-600 hover:text-gray-900">Annuler</a>
+            <button type="submit" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700">
+                Enregistrer
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

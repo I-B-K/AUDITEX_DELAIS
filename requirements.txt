@@ -1,0 +1,5 @@
+Django<5.0
+mysqlclient
+django-allauth
+mysql-connector-python
+pymysql

@@ -1,0 +1,618 @@
+{% extends "base.html" %}
+
+{% block title %}Déclaration - {{ declaration.client.raison_sociale }}{% endblock %}
+{% block page_title %}
+    {% if declaration.type_declaration == 'ANNUEL' %}
+        Déclaration Annuelle {{ declaration.annee }}
+    {% else %}
+        Déclaration T{{ declaration.periode }} {{ declaration.annee }}
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<!-- Structure de la modale d'erreurs -->
+<div id="error-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">Erreurs de validation</h3>
+            <div class="mt-2 px-7 py-3">
+                <div id="error-list" class="text-sm text-gray-700 text-left max-h-64 overflow-y-auto">
+                    <!-- Les erreurs seront injectées ici par JavaScript -->
+                </div>
+            </div>
+            <div class="items-center px-4 py-3">
+                <button id="close-modal-btn" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300">
+                    Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<form method="post">
+    {% csrf_token %}
+    <div class="bg-white p-6 rounded-xl shadow-md">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">{{ declaration.client.raison_sociale }}</h2>
+                <p class="text-sm text-gray-500">Statut : 
+                    {% if declaration.statut == 'SUBMITTED' %}
+                    <span class="font-semibold text-green-600">Soumis</span>
+                    {% else %}
+                    <span class="font-semibold text-yellow-600">Brouillon</span>
+                    {% endif %}
+                </p>
+
+            </div>
+            {% if declaration.statut != 'SUBMITTED' %}
+            <div class="flex space-x-2 mt-4 md:mt-0">
+                <button type="submit" name="save_draft" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-300">Enregistrer Brouillon</button>
+                <button type="submit" name="submit_declaration" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700">Soumettre la Déclaration</button>
+           
+            {% endif %}
+            <a href="{% url 'export_declaration_xml' declaration.pk %}" class="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-700">
+                    Export XML
+                </a>
+                 </div>
+        </div>
+        
+        <div class="mt-6 border-t pt-6">
+            <h3 class="text-lg font-semibold text-gray-700 mb-4">Informations de la Déclaration</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
+                <div class="col-span-1 md:col-span-4 lg:col-span-5">{{ form.non_field_errors }}</div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Client</label>
+                    <p class="mt-1 p-2 bg-gray-100 rounded-md">{{ declaration.client }}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Période</label>
+                    <p class="mt-1 p-2 bg-gray-100 rounded-md">
+                        {% if declaration.type_declaration == 'ANNUEL' %}
+                            Annuel
+                        {% else %}
+                            T{{ declaration.periode }}
+                        {% endif %}
+                    </p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Année</label>
+                    <p class="mt-1 p-2 bg-gray-100 rounded-md">{{ declaration.annee }}</p>
+                </div>
+                <div>
+                    <label for="{{ form.chiffre_affaires_n1.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.chiffre_affaires_n1.label }}</label>
+                    {{ form.chiffre_affaires_n1 }}
+                    {% for error in form.chiffre_affaires_n1.errors %}
+                        <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                <div>
+                    <label for="{{ form.taux_directeur.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.taux_directeur.label }}</label>
+                    {{ form.taux_directeur }}
+                    {% for error in form.taux_directeur.errors %}
+                        <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-8 bg-white p-6 rounded-xl shadow-md">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-700">Factures</h3>
+            {% if declaration.statut != 'SUBMITTED' %}
+            <div class="flex space-x-2 mt-4 md:mt-0">
+                <input type="file" id="excel-importer" class="hidden" accept=".xlsx, .xls, .csv">
+                <button type="button" id="import-button" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5 -ml-1 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                    Importer depuis Excel
+                </button>
+                <button type="button" id="add-form" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700">+ Ajouter une ligne</button>
+            </div>
+            {% endif %}
+        </div>
+        
+        {{ formset.management_form }}
+        
+        {% if formset.errors or formset.non_form_errors %}
+            {{ formset.errors|json_script:"formset-errors-data" }}
+            {{ formset.non_form_errors|json_script:"formset-non-form-errors-data" }}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <strong class="font-bold">Des erreurs ont été détectées.</strong>
+                <button type="button" id="open-error-modal-btn" class="ml-4 px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600">Voir les erreurs</button>
+            </div>
+        {% endif %}
+        
+        <div class="overflow-x-auto table-container">
+            <table id="facture-table" class="min-w-full text-sm whitespace-nowrap" data-year="{{ declaration.annee }}" data-quarter="{{ declaration.periode }}">
+                <thead class="bg-gray-100 text-xs text-gray-600">
+                    <tr>
+                        <th colspan="6" class="px-4 py-2 border text-center font-semibold">Identification du fournisseur</th>
+                        <th colspan="4" class="px-4 py-2 border text-center font-semibold">Identification facture</th>
+                        <th colspan="4" class="px-4 py-2 border text-center font-semibold">Livraison / Prestation</th>
+                        <th colspan="7" class="px-4 py-2 border text-center font-semibold">Détails Paiement</th>
+                        <th colspan="5" class="px-4 py-2 border text-center font-semibold">Litige</th>
+                        <th colspan="2" class="px-4 py-2 border text-center font-semibold">Paiement</th>
+                        <th colspan="2" class="px-4 py-2 border text-center font-semibold">Pénalités</th>
+                        <th rowspan="2" class="px-2 py-2 border text-center font-semibold align-bottom">Suppr.</th>
+                    </tr>
+                    <tr class="text-xs text-gray-600">
+                        <th class="px-2 py-3 border font-medium" aria-label="fournisseur_if">N° d'IF</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="fournisseur_ice">N° d'ICE</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="fournisseur_raison_sociale">Raison Sociale</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="fournisseur_rc">N° RC</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="fournisseur_adresse">Adresse</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="fournisseur_ville_rc">Ville du RC</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="numero_facture">N° Facture</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="date_emission_facture">Date Émission</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="nature_prestation">Nature Prestation</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="montant_ttc">Montant TTC</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="date_livraison">Date Livraison</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="mois_transaction">Mois (Trans. Périodique)</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="annee_transaction">Année (Trans. Périodique)</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="date_constatation_service">Date Constatation Service</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="date_paiement_prevue">Date Paiement Prévue</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="date_paiement_convenue">Date Paiement Convenue</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="delai_paiement_secteur">Délai Paiement Secteur</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="date_paiement_prevue_secteur">Date Prévue (Secteur)</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="montant_non_paye">Montant Non Payé</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="montant_paye_hors_delai">Montant Payé Hors Délai</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="date_paiement_hors_delai">Date Paiement Hors Délai</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="montant_objet_litige">Montant en Litige</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="date_recours_judiciaire">Date Recours Judiciaire</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="montant_du_apres_jugement">Montant Dû (Jugement)</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="date_jugement_definitif">Date Jugement Définitif</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="mois_suspension_amende">Nombre mois de suspension pénalités</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="mode_paiement">Mode Paiement</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="reference_paiement">Réf. Paiement</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="nombre_mois_retard">Nombre mois de retard</th>
+                        <th class="px-2 py-3 border font-medium" aria-label="amende">Amende</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for form in formset %}
+                    <tr class="facture-formset hover:bg-gray-50 {% if form.errors %}bg-red-50{% endif %}">
+                        {{ form.id }}
+                        <td class="border p-0 align-top {% if form.fournisseur_if.errors %}border-red-400{% endif %}">{{ form.fournisseur_if }}</td>
+                        <td class="border p-0 align-top {% if form.fournisseur_ice.errors %}border-red-400{% endif %}">{{ form.fournisseur_ice }}</td>
+                        <td class="border p-0 align-top {% if form.fournisseur_raison_sociale.errors %}border-red-400{% endif %}">{{ form.fournisseur_raison_sociale }}</td>
+                        <td class="border p-0 align-top {% if form.fournisseur_rc.errors %}border-red-400{% endif %}">{{ form.fournisseur_rc }}</td>
+                        <td class="border p-0 align-top {% if form.fournisseur_adresse.errors %}border-red-400{% endif %}">{{ form.fournisseur_adresse }}</td>
+                        <td class="border p-0 align-top {% if form.fournisseur_ville_rc.errors %}border-red-400{% endif %}">{{ form.fournisseur_ville_rc }}</td>
+                        <td class="border p-0 align-top {% if form.numero_facture.errors %}border-red-400{% endif %}">{{ form.numero_facture }}</td>
+                        <td class="border p-0 align-top {% if form.date_emission_facture.errors %}border-red-400{% endif %}">{{ form.date_emission_facture }}</td>
+                        <td class="border p-0 align-top {% if form.nature_prestation.errors %}border-red-400{% endif %}">{{ form.nature_prestation }}</td>
+                        <td class="border p-0 align-top {% if form.montant_ttc.errors %}border-red-400{% endif %}">{{ form.montant_ttc }}</td>
+                        <td class="border p-0 align-top {% if form.date_livraison.errors %}border-red-400{% endif %}">{{ form.date_livraison }}</td>
+                        <td class="border p-0 align-top {% if form.mois_transaction.errors %}border-red-400{% endif %}">{{ form.mois_transaction }}</td>
+                        <td class="border p-0 align-top {% if form.annee_transaction.errors %}border-red-400{% endif %}">{{ form.annee_transaction }}</td>
+                        <td class="border p-0 align-top {% if form.date_constatation_service.errors %}border-red-400{% endif %}">{{ form.date_constatation_service }}</td>
+                        <td class="border p-0 align-top {% if form.date_paiement_prevue.errors %}border-red-400{% endif %}">{{ form.date_paiement_prevue }}</td>
+                        <td class="border p-0 align-top {% if form.date_paiement_convenue.errors %}border-red-400{% endif %}">{{ form.date_paiement_convenue }}</td>
+                        <td class="border p-0 align-top {% if form.delai_paiement_secteur.errors %}border-red-400{% endif %}">{{ form.delai_paiement_secteur }}</td>
+                        <td class="border p-0 align-top {% if form.date_paiement_prevue_secteur.errors %}border-red-400{% endif %}">{{ form.date_paiement_prevue_secteur }}</td>
+                        <td class="border p-0 align-top {% if form.montant_non_paye.errors %}border-red-400{% endif %}">{{ form.montant_non_paye }}</td>
+                        <td class="border p-0 align-top {% if form.montant_paye_hors_delai.errors %}border-red-400{% endif %}">{{ form.montant_paye_hors_delai }}</td>
+                        <td class="border p-0 align-top {% if form.date_paiement_hors_delai.errors %}border-red-400{% endif %}">{{ form.date_paiement_hors_delai }}</td>
+                        <td class="border p-0 align-top {% if form.montant_objet_litige.errors %}border-red-400{% endif %}">{{ form.montant_objet_litige }}</td>
+                        <td class="border p-0 align-top {% if form.date_recours_judiciaire.errors %}border-red-400{% endif %}">{{ form.date_recours_judiciaire }}</td>
+                        <td class="border p-0 align-top {% if form.montant_du_apres_jugement.errors %}border-red-400{% endif %}">{{ form.montant_du_apres_jugement }}</td>
+                        <td class="border p-0 align-top {% if form.date_jugement_definitif.errors %}border-red-400{% endif %}">{{ form.date_jugement_definitif }}</td>
+                        <td class="border p-0 align-top {% if form.mois_suspension_amende.errors %}border-red-400{% endif %}">{{ form.mois_suspension_amende }}</td>
+                        <td class="border p-0 align-top {% if form.mode_paiement.errors %}border-red-400{% endif %}">{{ form.mode_paiement }}</td>
+                        <td class="border p-0 align-top {% if form.reference_paiement.errors %}border-red-400{% endif %}">{{ form.reference_paiement }}</td>
+                        <td class="border p-0 align-top {% if form.nombre_mois_retard.errors %}border-red-400{% endif %}">{{ form.nombre_mois_retard }}</td>
+                        <td class="border p-0 align-top {% if form.amende.errors %}border-red-400{% endif %}">{{ form.amende }}</td>
+                        <td class="border p-0 text-center align-middle">
+                            <div class="hidden">{{ form.DELETE }}</div>
+                            <button type="button" class="p-2 text-red-500 hover:text-red-700 delete-row-btn" title="Supprimer cette ligne">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div id="empty-form-template" class="hidden">
+                <table>
+                    <tr class="facture-formset hover:bg-gray-50">
+                        {{ formset.empty_form.id }}
+                        <td class="border p-0">{{ formset.empty_form.fournisseur_if }}</td>
+                        <td class="border p-0">{{ formset.empty_form.fournisseur_ice }}</td>
+                        <td class="border p-0">{{ formset.empty_form.fournisseur_raison_sociale }}</td>
+                        <td class="border p-0">{{ formset.empty_form.fournisseur_rc }}</td>
+                        <td class="border p-0">{{ formset.empty_form.fournisseur_adresse }}</td>
+                        <td class="border p-0">{{ formset.empty_form.fournisseur_ville_rc }}</td>
+                        <td class="border p-0">{{ formset.empty_form.numero_facture }}</td>
+                        <td class="border p-0">{{ formset.empty_form.date_emission_facture }}</td>
+                        <td class="border p-0">{{ formset.empty_form.nature_prestation }}</td>
+                        <td class="border p-0">{{ formset.empty_form.montant_ttc }}</td>
+                        <td class="border p-0">{{ formset.empty_form.date_livraison }}</td>
+                        <td class="border p-0">{{ formset.empty_form.mois_transaction }}</td>
+                        <td class="border p-0">{{ formset.empty_form.annee_transaction }}</td>
+                        <td class="border p-0">{{ formset.empty_form.date_constatation_service }}</td>
+                        <td class="border p-0">{{ formset.empty_form.date_paiement_prevue }}</td>
+                        <td class="border p-0">{{ formset.empty_form.date_paiement_convenue }}</td>
+                        <td class="border p-0">{{ formset.empty_form.delai_paiement_secteur }}</td>
+                        <td class="border p-0">{{ formset.empty_form.date_paiement_prevue_secteur }}</td>
+                        <td class="border p-0">{{ formset.empty_form.montant_non_paye }}</td>
+                        <td class="border p-0">{{ formset.empty_form.montant_paye_hors_delai }}</td>
+                        <td class="border p-0">{{ formset.empty_form.date_paiement_hors_delai }}</td>
+                        <td class="border p-0">{{ formset.empty_form.montant_objet_litige }}</td>
+                        <td class="border p-0">{{ formset.empty_form.date_recours_judiciaire }}</td>
+                        <td class="border p-0">{{ formset.empty_form.montant_du_apres_jugement }}</td>
+                        <td class="border p-0">{{ formset.empty_form.date_jugement_definitif }}</td>
+                        <td class="border p-0">{{ formset.empty_form.mois_suspension_amende }}</td>
+                        <td class="border p-0">{{ formset.empty_form.mode_paiement }}</td>
+                        <td class="border p-0">{{ formset.empty_form.reference_paiement }}</td>
+                        <td class="border p-0">{{ formset.empty_form.nombre_mois_retard }}</td>
+                        <td class="border p-0">{{ formset.empty_form.amende }}</td>
+                        <td class="border p-0 text-center align-middle">
+                            <div class="hidden">{{ formset.empty_form.DELETE }}</div>
+                             <button type="button" class="p-2 text-red-500 hover:text-red-700 delete-row-btn" title="Supprimer cette ligne">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                            </button>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tableBody = document.querySelector('#facture-table tbody');
+    const totalFormsInput = document.getElementById('id_factures-TOTAL_FORMS');
+    const emptyFormTemplate = document.getElementById('empty-form-template').querySelector('tr').cloneNode(true);
+
+    const addFormButton = document.getElementById('add-form');
+    if (addFormButton) {
+        addFormButton.addEventListener('click', () => addFormRow());
+    }
+
+    function addFormRow() {
+        let formNum = parseInt(totalFormsInput.value);
+        let newForm = emptyFormTemplate.cloneNode(true);
+        let newFormHtml = newForm.innerHTML.replace(/__prefix__/g, formNum);
+        let tempTr = document.createElement('tr');
+        tempTr.className = "facture-formset hover:bg-gray-50";
+        tempTr.innerHTML = newFormHtml;
+        tempTr.querySelectorAll('input').forEach(input => {
+            input.value = '';
+        });
+        tableBody.appendChild(tempTr);
+        totalFormsInput.value = formNum + 1;
+        return tempTr;
+    }
+
+    const table = document.getElementById('facture-table');
+    if (table) {
+        table.addEventListener('click', function(event) {
+            const deleteButton = event.target.closest('.delete-row-btn');
+            if (!deleteButton) return;
+            event.preventDefault();
+            const row = deleteButton.closest('tr');
+            if (!row) return;
+            const deleteCheckbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            if (deleteCheckbox) {
+                deleteCheckbox.checked = true;
+            }
+            row.style.display = 'none';
+        });
+    }
+
+    const errorModal = document.getElementById('error-modal');
+    const openModalBtn = document.getElementById('open-error-modal-btn');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const errorListDiv = document.getElementById('error-list');
+
+    if (openModalBtn) {
+        openModalBtn.addEventListener('click', () => {
+            errorListDiv.innerHTML = ''; 
+            const errorsDataEl = document.getElementById('formset-errors-data');
+            const nonFormErrorsDataEl = document.getElementById('formset-non-form-errors-data');
+            const errorsData = errorsDataEl ? JSON.parse(errorsDataEl.textContent) : [];
+            const nonFormErrorsData = nonFormErrorsDataEl ? JSON.parse(nonFormErrorsDataEl.textContent) : [];
+
+            let html = '<ul class="list-disc list-inside space-y-2">';
+            if (nonFormErrorsData.length > 0) {
+                html += `<li><strong class="font-semibold">Erreurs générales:</strong><ul>`;
+                nonFormErrorsData.forEach(error => { html += `<li class="ml-4">${error}</li>`; });
+                html += '</ul></li>';
+            }
+            errorsData.forEach((formErrors, index) => {
+                if (formErrors && Object.keys(formErrors).length > 0) {
+                    html += `<li><strong class="font-semibold">Ligne ${index + 1}:</strong><ul>`;
+                    for (const [field, errorMessages] of Object.entries(formErrors)) {
+                        const fieldLabel = document.querySelector(`th[aria-label="${field}"]`)?.textContent || field;
+                        const messages = Array.isArray(errorMessages) ? errorMessages.join(', ') : errorMessages;
+                        html += `<li class="ml-4">${fieldLabel}: ${messages}</li>`;
+                    }
+                    html += '</ul></li>';
+                }
+            });
+            html += '</ul>';
+            errorListDiv.innerHTML = html;
+            errorModal.style.display = 'block';
+        });
+    }
+
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => { errorModal.style.display = 'none'; });
+    }
+    window.addEventListener('click', (event) => {
+        if (event.target == errorModal) { errorModal.style.display = 'none'; }
+    });
+
+    const importButton = document.getElementById('import-button');
+    const excelImporterInput = document.getElementById('excel-importer');
+
+    if (importButton) {
+        importButton.addEventListener('click', () => excelImporterInput.click());
+        excelImporterInput.addEventListener('change', handleFileImport);
+    }
+    
+    function parseDate(value) {
+        if (!value) return null;
+        if (value instanceof Date && !isNaN(value)) return value.toISOString().split('T')[0];
+        if (typeof value === 'number') {
+            const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+            if (!isNaN(date)) return date.toISOString().split('T')[0];
+        }
+        if (typeof value === 'string') {
+            let year, month, day;
+            let parts = value.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+            if (parts) {
+                day = parseInt(parts[1], 10);
+                month = parseInt(parts[2], 10);
+                year = parseInt(parts[3], 10);
+            } else {
+                parts = value.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+                if (parts) {
+                    year = parseInt(parts[1], 10);
+                    month = parseInt(parts[2], 10);
+                    day = parseInt(parts[3], 10);
+                }
+            }
+            if (year && month && day && year > 1900 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                const monthStr = String(month).padStart(2, '0');
+                const dayStr = String(day).padStart(2, '0');
+                return `${year}-${monthStr}-${dayStr}`;
+            }
+        }
+        return null;
+    }
+
+    function handleFileImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array', cellDates:true });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+
+            let headerRowIndex = -1;
+            let headers = [];
+            const keyHeader = "RAISON SOCIALE";
+            for(let i = 0; i < jsonData.length; i++) {
+                const cleanedRow = jsonData[i].map(h => String(h).trim().toUpperCase());
+                if (cleanedRow.includes(keyHeader) || cleanedRow.includes("NOMETPRÉNOMOURAISONSOCIALE")) {
+                    headerRowIndex = i;
+                    headers = cleanedRow;
+                    break;
+                }
+            }
+
+            if (headerRowIndex === -1) {
+                alert(`Impossible de trouver la ligne d'en-tête. Assurez-vous qu'une colonne s'appelle '${keyHeader}'.`);
+                return;
+            }
+
+            const headerMap = {};
+            headers.forEach((h, i) => {
+                const cleanedHeader = h.replace(/\s+/g, ' ').trim();
+                headerMap[cleanedHeader] = i;
+            });
+            
+            const paymentModeMap = {
+                'ESPÈCES': '1', 'ESPECES': '1',
+                'CHÈQUE': '2', 'CHEQUE': '2',
+                'PRÉLÈVEMENT': '3', 'PRELEVEMENT': '3',
+                'VIREMENT': '4',
+                'EFFETS': '5'
+            };
+            
+            const monthNameMap = {
+                'JANVIER': '1', 'FEVRIER': '2', 'FÉVRIER': '2', 'MARS': '3', 'AVRIL': '4',
+                'MAI': '5', 'JUIN': '6', 'JUILLET': '7', 'AOUT': '8', 'AOÛT': '8',
+                'SEPTEMBRE': '9', 'OCTOBRE': '10', 'NOVEMBRE': '11', 'DECEMBRE': '12'
+            };
+
+            const fieldMap = {
+                'fournisseur_if': ["N° D'IF", "N° IF"], 'fournisseur_ice': ["N° D'ICE", "N° ICE"], 'fournisseur_raison_sociale': ["RAISON SOCIALE", "NOMETPRÉNOMOURAISONSOCIALE"], 'fournisseur_rc': ["N° RC"], 'fournisseur_adresse': ["ADRESSE", "ADRESSE SIÈGE SOCIAL"], 'fournisseur_ville_rc': ["VILLE DU RC"], 'numero_facture': ["N° DE FACTURE", "N° FACT"], 'date_emission_facture': ["DATE D'ÉMISSION", "DATE D’ÉMISSION", "DATE DEMISSION", "DATE FACT"], 'nature_prestation': ["NATURE PRESTATION", "NATURE DES MARCHANDISES LIVRÉES, DES TRAVAUX EXÉCUTÉS OU DES SERVICES RENDUS", "DESIGNAT M/SES"], 'date_livraison': ["DATE LIVRAISON", "DATE DE LIVRAISON DES MARCHANDISES, DE L’EXÉCUTION DES TRAVAUX OU DE LA PRESTATION DES SERVICES"], 'mois_transaction': ["MOIS (TRANSACTIONS D’UNE PÉRIODICITÉ NE DÉPASSANT PAS UN MOIS)", "MOIS"], 'annee_transaction': ["ANNÉE (TRANSACTIONS D’UNE PÉRIODICITÉ NE DÉPASSANT PAS UN MOIS)2", "ANNÉE"],
+                'date_constatation_service': ["DATE DE LA CONSTATATION DU SERVICE FAIT POUR LES ÉTABLISSEMENTS PUBLICS", "DATE CONSTATATION SERVICE"],
+                'date_paiement_prevue': ["DATE PRÉVUE POUR LE PAIEMENT DE LA FACTURE", "DATE PAIEMENT PRÉVUE"],
+                'date_paiement_convenue': ["DATE CONVENUE POUR LE PAIEMENT DE LA FACTURE", "DATE PAIEMENT CONVENUE"],
+                'delai_paiement_secteur': ["DÉLAI DE PAIEMENT DES FACTURES POUR LE SECTEUR D’ACTIVITÉ(2)", "DELAIS CONVENTION", "DÉLAI PAIEMENT SECTEUR"],
+                'date_paiement_prevue_secteur': ["DATE PRÉVUE POUR LE PAIEMENT DE LA FACTURE SELON LE DÉLAI FIXÉ AU SECTEUR(2)", "DATE PRÉVUE (SECTEUR)"],
+                'montant_ttc': ["MONTANT DE LA FACTURE TTC", "MONTANT TTC"], 'montant_non_paye': ["MONTANT NON ENCORE PAYÉ DE LA FACTURE"],
+                'montant_paye_hors_delai': ["MONTANT PAYÉ TOTALEMENT OU PARTIELLEMENT, HORS DÉLAI AU COURS DE LA PÉRIODE OBJET DE LA DÉCLARATION"],
+                'date_paiement_hors_delai': ["DATE DU PAIEMENT TOTAL OU PARTIEL, HORS DÉLAI", "DATE EFFECTIVE DE PAIEMENT", "DATE PAIEMENT HORS DÉLAI"],
+                'mode_paiement': ["MODE DE PAIEMENT", "MODE PAIE"],
+                'reference_paiement': ["RÉFÉRENCES DU PAIEMENT", "REF. PAIEMENT", "REF PAIEMENT"],
+                'montant_objet_litige': ["MONTANT OBJET DE LITIGES SOUMIS À LA JUSTICE(3)", "MONTANT EN LITIGE"],
+                'date_recours_judiciaire': ["DATE DU RECOURS JUDICIAIRE(3)", "DATE RECOURS JUDICIAIRE"],
+                'montant_du_apres_jugement': ["MONTANT DÛ APRÈS JUGEMENT(3)", "MONTANT DÛ (JUGEMENT)"],
+                'date_jugement_definitif': ["DATE DU JUGEMENT DÉFINITIF(3)", "DATE JUGEMENT DÉFINITIF"],
+                'mois_suspension_amende': ["NOMBRE DE MOIS AYANT FAIT L'OBJET DE SUSPENSION D'APPLICATION DE L'AMENDE PÉCUNIAIRE", "NOMBRE MOIS DE SUSPENSION PÉNALITÉS"]
+            };
+
+            for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
+                const rowData = jsonData[i];
+                if (!rowData || rowData.length === 0 || String(rowData[headerMap[keyHeader]] || "").trim() === "") continue;
+
+                const newRow = addFormRow();
+                const formNum = parseInt(totalFormsInput.value) - 1;
+
+                for (const [fieldName, possibleHeaders] of Object.entries(fieldMap)) {
+                    const input = newRow.querySelector(`[name="factures-${formNum}-${fieldName}"]`);
+                    if (!input) continue;
+
+                    for (const header of possibleHeaders) {
+                        const colIndex = headerMap[header];
+                        if (colIndex !== undefined && rowData[colIndex] !== null && rowData[colIndex] !== undefined) {
+                            let value = rowData[colIndex];
+                            
+                            if (fieldName === 'mode_paiement') {
+                                const modeCode = paymentModeMap[String(value).trim().toUpperCase()];
+                                if (modeCode) {
+                                    input.value = modeCode;
+                                }
+                            } else if (fieldName === 'mois_transaction') {
+                                const monthCode = monthNameMap[String(value).trim().toUpperCase()];
+                                input.value = monthCode || value;
+                            } else if (input.type === 'date') {
+                                const formattedDate = parseDate(value);
+                                if (formattedDate) {
+                                    input.value = formattedDate;
+                                }
+                            } else {
+                                input.value = value;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        event.target.value = '';
+    }
+
+    const year = parseInt(table.dataset.year);
+    const quarter = parseInt(table.dataset.quarter);
+    const tauxDirecteurInput = document.getElementById('id_taux_directeur');
+
+    const ADDITIONAL_RATE = 0.0085;
+
+    function getQuarterEndDate(year, quarter) {
+        if (quarter === 1) return new Date(year, 2, 31); // 31 Mars
+        if (quarter === 2) return new Date(year, 5, 30); // 30 Juin
+        if (quarter === 3) return new Date(year, 8, 30); // 30 Septembre
+        if (quarter === 4) return new Date(year, 11, 31); // 31 Décembre
+        return null;
+    }
+
+    function calculateMonthDifference(startDate, endDate) {
+        if (!startDate || !endDate || isNaN(startDate) || isNaN(endDate) || endDate < startDate) return 0;
+        
+        let startYear = startDate.getFullYear();
+        let startMonth = startDate.getMonth();
+        let endYear = endDate.getFullYear();
+        let endMonth = endDate.getMonth();
+        
+        let monthDiff = (endYear - startYear) * 12 + (endMonth - startMonth);
+        
+        return monthDiff + 1;
+    }
+
+    function updateCalculations(row) {
+        // Récupération des champs
+        const datePaiementPrevueInput = row.querySelector('input[name$="-date_paiement_prevue"]');
+        const datePaiementConvenueInput = row.querySelector('input[name$="-date_paiement_convenue"]');
+        const datePaiementPrevueSecteurInput = row.querySelector('input[name$="-date_paiement_prevue_secteur"]');
+        const montantNonPayeInput = row.querySelector('input[name$="-montant_non_paye"]');
+        const montantPayeHorsDelaiInput = row.querySelector('input[name$="-montant_paye_hors_delai"]');
+        const datePaiementHorsDelaiInput = row.querySelector('input[name$="-date_paiement_hors_delai"]');
+        const moisRetardInput = row.querySelector('input[name$="-nombre_mois_retard"]');
+        const amendeInput = row.querySelector('input[name$="-amende"]');
+
+        if (!moisRetardInput || !amendeInput) return;
+
+        // Détermination de la date de départ (échéance)
+        let startDate = null;
+        if (datePaiementPrevueInput && datePaiementPrevueInput.value) startDate = new Date(datePaiementPrevueInput.value);
+        else if (datePaiementConvenueInput && datePaiementConvenueInput.value) startDate = new Date(datePaiementConvenueInput.value);
+        else if (datePaiementPrevueSecteurInput && datePaiementPrevueSecteurInput.value) startDate = new Date(datePaiementPrevueSecteurInput.value);
+
+        const montantNonPaye = parseFloat(montantNonPayeInput.value) || 0;
+        const montantPayeHorsDelai = parseFloat(montantPayeHorsDelaiInput.value) || 0;
+        
+        let endDate = null;
+        let monthsDifference = 0;
+        let baseAmount = 0;
+
+        // Calcul des mois de retard
+        if (montantNonPaye > 0) {
+            endDate = getQuarterEndDate(year, quarter);
+            monthsDifference = calculateMonthDifference(startDate, endDate);
+            baseAmount = montantNonPaye;
+        } else if (montantPayeHorsDelai > 0 && datePaiementHorsDelaiInput.value) {
+            endDate = new Date(datePaiementHorsDelaiInput.value);
+            if (startDate && endDate && startDate.getTime() === endDate.getTime()) {
+        monthsDifference = 0;
+        } else {
+            monthsDifference = calculateMonthDifference(startDate, endDate);
+        }
+
+            baseAmount = montantPayeHorsDelai;
+        }
+        
+        moisRetardInput.value = monthsDifference;
+
+        // Calcul de l'amende
+        let amende = 0;
+        if (monthsDifference > 0 && baseAmount > 0) {
+            const bankRate = parseFloat(tauxDirecteurInput.value) / 100 || 0;
+            
+            // Premier mois
+            amende += baseAmount * bankRate;
+            
+            // Mois suivants
+            if (monthsDifference > 1) {
+                amende += baseAmount * ADDITIONAL_RATE * (monthsDifference - 1);
+            }
+        }
+        
+        amendeInput.value = amende > 0 ? amende.toFixed(2) : '';
+    }
+
+    // Attacher les écouteurs d'événements
+    table.addEventListener('input', function(event) {
+        const target = event.target;
+        if (target && target.closest('.facture-formset')) {
+            const row = target.closest('.facture-formset');
+            updateCalculations(row);
+        }
+    });
+
+    // Écouteur pour le champ Taux Directeur
+    if (tauxDirecteurInput) {
+        tauxDirecteurInput.addEventListener('input', function() {
+            document.querySelectorAll('.facture-formset').forEach(row => {
+                updateCalculations(row);
+            });
+        });
+    }
+
+    // Calculer pour les lignes existantes au chargement de la page
+    document.querySelectorAll('.facture-formset').forEach(row => {
+        updateCalculations(row);
+    });
+});
+</script>
+{% endblock %}
