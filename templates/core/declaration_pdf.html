@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Déclaration {{ declaration.pk }}</title>
+    <style>
+        @page {
+            size: a4 landscape;
+            margin: 1cm;
+        }
+        body {
+            font-family: "Helvetica", sans-serif;
+            font-size: 10px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 4px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .info-table {
+            margin-bottom: 20px;
+        }
+        .info-table td {
+            border: none;
+            padding: 2px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Déclaration des Délais de Paiement</h1>
+
+    <table class="info-table">
+        <tr>
+            <td><strong>Client:</strong></td>
+            <td>{{ declaration.client.raison_sociale }}</td>
+            <td><strong>Période:</strong></td>
+            <td>
+                {% if declaration.type_declaration == 'ANNUEL' %}
+                    Annuel
+                {% else %}
+                    Trimestre {{ declaration.periode }}
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td><strong>N° IF:</strong></td>
+            <td>{{ declaration.client.numero_if }}</td>
+            <td><strong>Année:</strong></td>
+            <td>{{ declaration.annee }}</td>
+        </tr>
+    </table>
+
+    <h2>Détail des Factures</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>IF Fournisseur</th>
+                <th>Raison Sociale</th>
+                <th>N° Facture</th>
+                <th>Date Émission</th>
+                <th>Montant TTC</th>
+                <th>Date Paiement Prévue</th>
+                <th>Date Paiement Convenue</th>
+                <th>Date Paiement Hors Délai</th>
+                <th>Montant Non Payé</th>
+                <th>Montant Payé Hors Délai</th>
+                <th>Mois de Retard</th>
+                <th>Amende</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for facture in declaration.factures.all %}
+            <tr>
+                <td>{{ facture.fournisseur_if }}</td>
+                <td>{{ facture.fournisseur_raison_sociale }}</td>
+                <td>{{ facture.numero_facture }}</td>
+                <td>{{ facture.date_emission_facture|date:"d/m/Y" }}</td>
+                <td>{{ facture.montant_ttc }}</td>
+                <td>{{ facture.date_paiement_prevue|date:"d/m/Y" }}</td>
+                <td>{{ facture.date_paiement_convenue|date:"d/m/Y" }}</td>
+                <td>{{ facture.date_paiement_hors_delai|date:"d/m/Y" }}</td>
+                <td>{{ facture.montant_non_paye }}</td>
+                <td>{{ facture.montant_paye_hors_delai }}</td>
+                <td>{{ facture.nombre_mois_retard }}</td>
+                <td>{{ facture.amende }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>

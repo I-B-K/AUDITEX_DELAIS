@@ -58,6 +58,14 @@
             <a href="{% url 'export_declaration_xml' declaration.pk %}" class="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-700">
                     Export XML
                 </a>
+
+                <!-- NOUVEAUX BOUTONS -->
+                <a href="{% url 'export_declaration_pdf' declaration.pk %}" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700">
+                    Export PDF
+                </a>
+                <a href="{% url 'export_declaration_excel' declaration.pk %}" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700">
+                    Export Excel
+                </a>
                  </div>
         </div>
         
@@ -106,6 +114,14 @@
             <h3 class="text-lg font-semibold text-gray-700">Factures</h3>
             {% if declaration.statut != 'SUBMITTED' %}
             <div class="flex space-x-2 mt-4 md:mt-0">
+
+                <!-- NOUVEAU : Bouton pour exporter le modèle Excel -->
+                <a href="{% url 'export_excel_template' %}" class="bg-teal-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-teal-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5 -ml-1 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Modèle Excel
+                </a>
                 <input type="file" id="excel-importer" class="hidden" accept=".xlsx, .xls, .csv">
                 <button type="button" id="import-button" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700">
                     <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5 -ml-1 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>

@@ -6,13 +6,20 @@ from django.contrib.auth.models import User
 from django.urls import reverse_lazy, reverse
 from django.db import transaction
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
+import datetime
+import os
+from django.conf import settings
+from django.template.loader import get_template
+from xhtml2pdf import pisa
+from io import BytesIO
+import openpyxl
+
 from core.models import Client, Declaration, Facture
 from core.forms import DeclarationForm, FactureFormSet, ClientForm
-from datetime import datetime
-import datetime
+
 # ... (Les vues DashboardView, DeclarationDetailView, etc. restent inchangées) ...
 
 class DashboardView(LoginRequiredMixin, ListView):
@@ -36,6 +43,7 @@ class DashboardView(LoginRequiredMixin, ListView):
     def post(self, request, *args, **kwargs):
         form = DeclarationForm(request.POST)
         if form.is_valid():
+            # ... (logique de création de déclaration inchangée) ...
             client = form.cleaned_data['client']
             type_declaration = form.cleaned_data['type_declaration']
             periode = form.cleaned_data.get('periode')
@@ -84,6 +92,7 @@ class DeclarationDetailView(LoginRequiredMixin, UpdateView):
         return context
 
     def post(self, request, *args, **kwargs):
+        # ... (logique de modification de déclaration inchangée) ...
         self.object = self.get_object()
         
         if self.object.statut == 'SUBMITTED':
@@ -122,12 +131,14 @@ class DeclarationDetailView(LoginRequiredMixin, UpdateView):
 
 
 class ClientListView(LoginRequiredMixin, ListView):
+    # ... (inchangé)
     model = Client
     template_name = 'core/client_list.html'
     context_object_name = 'clients'
     paginate_by = 10
 
 class ClientCreateView(LoginRequiredMixin, CreateView):
+    # ... (inchangé)
     model = Client
     form_class = ClientForm
     template_name = 'core/client_form.html'
@@ -139,6 +150,7 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
         return context
 
 class ClientUpdateView(LoginRequiredMixin, UpdateView):
+    # ... (inchangé)
     model = Client
     form_class = ClientForm
     template_name = 'core/client_form.html'
@@ -150,6 +162,7 @@ class ClientUpdateView(LoginRequiredMixin, UpdateView):
         return context
 
 class ClientDeclarationsView(LoginRequiredMixin, ListView):
+    # ... (inchangé)
     model = Declaration
     template_name = 'core/client_declarations.html'
     context_object_name = 'declarations'
@@ -165,20 +178,16 @@ class ClientDeclarationsView(LoginRequiredMixin, ListView):
         return context
 
 class CollaboratorListView(LoginRequiredMixin, ListView):
+    # ... (inchangé)
     model = User
     template_name = 'core/collaborator_list.html'
     context_object_name = 'collaborators'
 
 
-# NOUVELLE VUE POUR L'EXPORT XML
 def export_declaration_xml(request, pk):
+    # ... (inchangé)
     declaration = get_object_or_404(Declaration, pk=pk)
-    factures = declaration.factures.filter(nombre_mois_retard__gt=0)
-    
-    # Création de l'élément racine
     root = ET.Element("DeclarationDelaiPaiement")
-
-    # Helper pour ajouter des sous-éléments
     def add_sub_element(parent, tag, value):
         if value is not None:
             child = ET.SubElement(parent, tag)
@@ -186,23 +195,15 @@ def export_declaration_xml(request, pk):
                 child.text = value.strftime('%Y-%m-%d')
             else:
                 child.text = str(value)
-
-    # Ajout des informations de la déclaration
     add_sub_element(root, "identifiantFiscal", declaration.client.numero_if)
     add_sub_element(root, "annee", declaration.annee)
-    
     periode = 5 if declaration.type_declaration == 'ANNUEL' else declaration.periode
     add_sub_element(root, "periode", periode)
-    
-    add_sub_element(root, "activite", 1) # Activité normale par défaut
+    add_sub_element(root, "activite", 1)
     add_sub_element(root, "chiffreAffaire", int(declaration.chiffre_affaires_n1))
-
-    # Création de la liste des factures
     liste_factures = ET.SubElement(root, "listeFacturesHorsDelai")
-
     for facture in declaration.factures.all():
         facture_element = ET.SubElement(liste_factures, "FactureHorsDelai")
-        
         add_sub_element(facture_element, "identifiantFiscal", facture.fournisseur_if)
         add_sub_element(facture_element, "numRC", facture.fournisseur_rc)
         add_sub_element(facture_element, "adresseSiegeSocial", facture.fournisseur_adresse)
@@ -227,13 +228,81 @@ def export_declaration_xml(request, pk):
         add_sub_element(facture_element, "dateJugementDefinitif", facture.date_jugement_definitif)
         add_sub_element(facture_element, "modePaiement", facture.mode_paiement)
         add_sub_element(facture_element, "referencePaiement", facture.reference_paiement)
-
-    # Formatage du XML pour une meilleure lisibilité
     xml_string = ET.tostring(root, 'utf-8')
     dom = minidom.parseString(xml_string)
     pretty_xml = dom.toprettyxml(indent="  ", encoding="utf-8")
-
-    # Création de la réponse HTTP
     response = HttpResponse(pretty_xml, content_type='application/xml')
     response['Content-Disposition'] = f'attachment; filename="declaration_{declaration.pk}.xml"'
+    return response
+
+def export_excel_template(request):
+    # ... (inchangé)
+    try:
+        file_path = os.path.join(settings.BASE_DIR, 'core', 'static', 'core', 'excel_templates', 'declaration_template.xlsx')
+        
+        if os.path.exists(file_path):
+            with open(file_path, 'rb') as fh:
+                response = HttpResponse(fh.read(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                response['Content-Disposition'] = 'attachment; filename=' + os.path.basename(file_path)
+                return response
+        raise Http404
+    except Exception as e:
+        return HttpResponse(f"Erreur lors de l'exportation du fichier : {e}", status=500)
+
+# NOUVELLE VUE POUR L'EXPORT PDF
+def export_declaration_pdf(request, pk):
+    declaration = get_object_or_404(Declaration, pk=pk)
+    template_path = 'core/declaration_pdf.html'
+    context = {'declaration': declaration}
+    
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="declaration_{declaration.pk}.pdf"'
+    
+    template = get_template(template_path)
+    html = template.render(context)
+    
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    
+    if pisa_status.err:
+       return HttpResponse('We had some errors <pre>' + html + '</pre>')
+    return response
+
+# NOUVELLE VUE POUR L'EXPORT EXCEL
+def export_declaration_excel(request, pk):
+    declaration = get_object_or_404(Declaration.objects.prefetch_related('factures'), pk=pk)
+    
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Déclaration"
+    
+    # En-têtes
+    headers = [
+        "N° d'IF Fournisseur", "Raison Sociale Fournisseur", "N° Facture", "Date Émission", 
+        "Montant TTC", "Date Paiement Prévue", "Date Paiement Convenue", "Date Paiement Hors Délai",
+        "Montant Non Payé", "Montant Payé Hors Délai", "Nombre mois de retard", "Amende"
+    ]
+    sheet.append(headers)
+    
+    # Données
+    for facture in declaration.factures.all():
+        row = [
+            facture.fournisseur_if,
+            facture.fournisseur_raison_sociale,
+            facture.numero_facture,
+            facture.date_emission_facture,
+            facture.montant_ttc,
+            facture.date_paiement_prevue,
+            facture.date_paiement_convenue,
+            facture.date_paiement_hors_delai,
+            facture.montant_non_paye,
+            facture.montant_paye_hors_delai,
+            facture.nombre_mois_retard,
+            facture.amende,
+        ]
+        sheet.append(row)
+        
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="declaration_{declaration.pk}.xlsx"'
+    workbook.save(response)
+    
     return response

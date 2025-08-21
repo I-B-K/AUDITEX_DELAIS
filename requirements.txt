@@ -3,3 +3,4 @@ mysqlclient
 django-allauth
 mysql-connector-python
 pymysql
+xhtml2pdf
