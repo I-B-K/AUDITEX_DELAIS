@@ -9,8 +9,8 @@ ENV PYTHONUNBUFFERED 1
 # Définir le répertoire de travail dans le conteneur
 WORKDIR /app
 
-# Installer les dépendances système si nécessaire (ici, aucune pour l'instant)
-# RUN apt-get update && apt-get install -y ...
+# Installer les dépendances système nécessaires pour mysqlclient
+RUN apt-get update && apt-get install -y build-essential pkg-config default-libmysqlclient-dev && rm -rf /var/lib/apt/lists/*
 
 # Copier le fichier des dépendances et les installer
 COPY requirements.txt .

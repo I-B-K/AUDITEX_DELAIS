@@ -1,9 +1,15 @@
 Django<5.0
-mysqlclient
 django-allauth
-mysql-connector-python
+# Pilote MySQL principal (rapide, nécessite une compilation)
+mysqlclient
+# Pilote de secours pur Python (utilisé dans settings.py)
 pymysql
+# Pour la génération de PDF
+reportlab
 xhtml2pdf
+# Pour la génération de fichiers Excel
+openpyxl
+# Pour l'authentification JWT (si nécessaire, dépendance possible de allauth)
 PyJWT
-openpyxgunicorn
+# Serveur WSGI de production
 gunicorn
