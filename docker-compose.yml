@@ -5,20 +5,20 @@ services:
     image: mysql:8.0
     container_name: mysql_db
     restart: always
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
-      interval: 5s
     environment:
-      - MYSQL_DATABASE=${DB_NAME}
-      - MYSQL_USER=${DB_USER}
-      - MYSQL_PASSWORD=${DB_PASS}
-      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: "Masteribk2019++"
+      MYSQL_DATABASE: "delais"
+      MYSQL_USER: "IBK"
+      MYSQL_PASSWORD: "Masteribk2019++"
     volumes:
       - mysql_data:/var/lib/mysql
     ports:
-      - "3307:3306"  # hôte:conteneur
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     networks:
       - app-network
 
