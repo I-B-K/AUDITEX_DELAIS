@@ -17,8 +17,13 @@ from xhtml2pdf import pisa
 from io import BytesIO
 import openpyxl
 
-from core.models import Client, Declaration, Facture
-from core.forms import DeclarationForm, FactureFormSet, ClientForm
+from core.models import Client, Declaration, Facture, ReleveFacture
+from core.forms import (
+    DeclarationForm, FactureFormSet, ClientForm, ReleveFactureFormSet,
+    DeclarationUpdateForm, ClientCollaboratorAssignForm, CollaboratorClientAssignForm
+)
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.decorators import method_decorator
 
 # ... (Les vues DashboardView, DeclarationDetailView, etc. restent inchangées) ...
 
@@ -29,21 +34,29 @@ class DashboardView(LoginRequiredMixin, ListView):
     paginate_by = 5
 
     def get_queryset(self):
-        return Declaration.objects.select_related('client').order_by('-annee', '-periode')
+        # On utilise le manager sécurisé pour filtrer les déclarations
+        return Declaration.secure_objects.get_queryset_for_user(self.request.user).select_related('client').order_by('-annee', '-periode')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['total_clients'] = Client.objects.count()
+        user = self.request.user
+        
+        # On filtre les statistiques pour l'utilisateur connecté
+        context['total_clients'] = Client.secure_objects.get_queryset_for_user(user).count()
+        context['declarations_submitted_count'] = Declaration.secure_objects.get_queryset_for_user(user).filter(statut='SUBMITTED').count()
+        context['declarations_draft_count'] = Declaration.secure_objects.get_queryset_for_user(user).filter(statut='DRAFT').count()
+        
+        # Le nombre total de collaborateurs peut rester global
         context['total_collaborators'] = User.objects.count()
-        context['declarations_submitted_count'] = Declaration.objects.filter(statut='SUBMITTED').count()
+
         if 'declaration_form' not in context:
-            context['declaration_form'] = DeclarationForm()
+            # On passe l'utilisateur au formulaire pour qu'il puisse filtrer les clients
+            context['declaration_form'] = DeclarationForm(user=self.request.user)
         return context
 
     def post(self, request, *args, **kwargs):
-        form = DeclarationForm(request.POST)
+        form = DeclarationForm(request.POST, user=request.user)
         if form.is_valid():
-            # ... (logique de création de déclaration inchangée) ...
             client = form.cleaned_data['client']
             type_declaration = form.cleaned_data['type_declaration']
             periode = form.cleaned_data.get('periode')
@@ -57,6 +70,7 @@ class DashboardView(LoginRequiredMixin, ListView):
             if type_declaration == 'TRIMESTRIEL':
                 filter_kwargs['periode'] = periode
             
+            # On vérifie sur toutes les déclarations, pas seulement celles de l'utilisateur
             existing_declaration = Declaration.objects.filter(**filter_kwargs).first()
 
             if existing_declaration:
@@ -78,41 +92,80 @@ class DashboardView(LoginRequiredMixin, ListView):
 
 class DeclarationDetailView(LoginRequiredMixin, UpdateView):
     model = Declaration
+    form_class = DeclarationUpdateForm
     template_name = 'core/declaration_detail.html'
     context_object_name = 'declaration'
-    fields = ['chiffre_affaires_n1', 'taux_directeur']
+
+    def get_queryset(self):
+        # Le manager sécurisé s'occupe du filtrage
+        return Declaration.secure_objects.get_queryset_for_user(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if 'formset' not in kwargs:
-            if self.request.POST:
-                context['formset'] = FactureFormSet(self.request.POST, instance=self.object)
-            else:
-                context['formset'] = FactureFormSet(instance=self.object)
+        if self.request.POST:
+            context['formset'] = FactureFormSet(self.request.POST, instance=self.object)
+            context['releve_formset'] = ReleveFactureFormSet(self.request.POST, instance=self.object, prefix='releves')
+        else:
+            context['formset'] = FactureFormSet(instance=self.object)
+            context['releve_formset'] = ReleveFactureFormSet(instance=self.object, prefix='releves')
         return context
 
     def post(self, request, *args, **kwargs):
-        # ... (logique de modification de déclaration inchangée) ...
         self.object = self.get_object()
         
         if self.object.statut == 'SUBMITTED':
             messages.error(request, "Cette déclaration est déjà soumise et ne peut plus être modifiée.")
             return redirect('declaration_detail', pk=self.object.pk)
 
+        action = request.POST.get('action')
         form = self.get_form()
         formset = FactureFormSet(request.POST, instance=self.object)
+        releve_formset = ReleveFactureFormSet(request.POST, instance=self.object, prefix='releves')
 
-        if form.is_valid() and formset.is_valid():
-            return self.form_valid(form, formset)
-        else:
-            messages.error(request, "Veuillez corriger les erreurs ci-dessous.")
-            return self.form_invalid(form, formset)
+        if not form.is_valid():
+            messages.error(request, "Veuillez corriger les erreurs dans les informations générales avant de sauvegarder.")
+            return self.form_invalid(form, formset, releve_formset)
 
-    def form_valid(self, form, formset):
+        if action == 'save_factures':
+            if formset.is_valid():
+                with transaction.atomic():
+                    self.object = form.save()
+                    formset.save()
+                messages.success(request, "Les factures détaillées ont été enregistrées avec succès.")
+                return redirect(self.get_success_url())
+            else:
+                messages.error(request, "Veuillez corriger les erreurs dans les factures détaillées.")
+                return self.form_invalid(form, formset, releve_formset)
+
+        elif action == 'save_releves':
+            if releve_formset.is_valid():
+                with transaction.atomic():
+                    self.object = form.save()
+                    releve_formset.save()
+                messages.success(request, "Le relevé de factures a été enregistré avec succès.")
+                return redirect(self.get_success_url())
+            else:
+                messages.error(request, "Veuillez corriger les erreurs dans le relevé de factures.")
+                return self.form_invalid(form, formset, releve_formset)
+
+        elif action in ['save_draft', 'submit_declaration']:
+            if formset.is_valid() and releve_formset.is_valid():
+                return self.form_valid(form, formset, releve_formset)
+            else:
+                messages.error(request, "Veuillez corriger toutes les erreurs avant de soumettre.")
+                return self.form_invalid(form, formset, releve_formset)
+        
+        # Fallback pour un POST inattendu
+        messages.warning(request, "Action non reconnue.")
+        return redirect(self.get_success_url())
+
+    def form_valid(self, form, formset, releve_formset):
         with transaction.atomic():
             self.object = form.save()
             formset.instance = self.object
             formset.save()
+            releve_formset.instance = self.object
+            releve_formset.save()
 
         if 'submit_declaration' in self.request.POST:
             self.object.statut = 'SUBMITTED'
@@ -123,22 +176,35 @@ class DeclarationDetailView(LoginRequiredMixin, UpdateView):
         
         return redirect(self.get_success_url())
     
-    def form_invalid(self, form, formset):
-        return self.render_to_response(self.get_context_data(form=form, formset=formset))
+    def form_invalid(self, form, formset, releve_formset):
+        return self.render_to_response(self.get_context_data(form=form, formset=formset, releve_formset=releve_formset))
 
     def get_success_url(self):
         return reverse('declaration_detail', kwargs={'pk': self.object.pk})
 
 
 class ClientListView(LoginRequiredMixin, ListView):
-    # ... (inchangé)
     model = Client
     template_name = 'core/client_list.html'
     context_object_name = 'clients'
     paginate_by = 10
 
+    def get_queryset(self):
+        user = self.request.user
+        return Client.secure_objects.get_queryset_for_user(user).prefetch_related('collaborateurs').order_by('raison_sociale')
+
+    def get_context_data(self, **kwargs):
+        # Cette partie est pour l'affichage du filtre admin, on peut la garder
+        context = super().get_context_data(**kwargs)
+        collab_id = self.request.GET.get('collab')
+        if collab_id and self.request.user.is_staff:
+            try:
+                context['filtered_collaborator'] = User.objects.get(pk=collab_id)
+            except User.DoesNotExist:
+                context['filtered_collaborator'] = None
+        return context
+
 class ClientCreateView(LoginRequiredMixin, CreateView):
-    # ... (inchangé)
     model = Client
     form_class = ClientForm
     template_name = 'core/client_form.html'
@@ -150,11 +216,13 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
         return context
 
 class ClientUpdateView(LoginRequiredMixin, UpdateView):
-    # ... (inchangé)
     model = Client
     form_class = ClientForm
     template_name = 'core/client_form.html'
     success_url = reverse_lazy('client_list')
+
+    def get_queryset(self):
+        return Client.secure_objects.get_queryset_for_user(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -162,26 +230,85 @@ class ClientUpdateView(LoginRequiredMixin, UpdateView):
         return context
 
 class ClientDeclarationsView(LoginRequiredMixin, ListView):
-    # ... (inchangé)
     model = Declaration
     template_name = 'core/client_declarations.html'
     context_object_name = 'declarations'
     paginate_by = 10
 
     def get_queryset(self):
-        self.client = get_object_or_404(Client, pk=self.kwargs['pk'])
-        return Declaration.objects.filter(client=self.client).order_by('-annee', '-periode')
+        # On s'assure d'abord que le client lui-même est accessible via le manager sécurisé
+        client_pk = self.kwargs['pk']
+        client = get_object_or_404(Client.secure_objects.get_queryset_for_user(self.request.user), pk=client_pk)
+        # Ensuite on filtre les déclarations pour ce client
+        return Declaration.objects.filter(client=client).order_by('-annee', '-periode')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['client'] = self.client
+        context['client'] = get_object_or_404(Client, pk=self.kwargs['pk'])
         return context
 
+@method_decorator(staff_member_required, name='dispatch')
 class CollaboratorListView(LoginRequiredMixin, ListView):
-    # ... (inchangé)
     model = User
     template_name = 'core/collaborator_list.html'
     context_object_name = 'collaborators'
+
+@method_decorator(staff_member_required, name='dispatch')
+class ClientCollaboratorAssignView(LoginRequiredMixin, UpdateView):
+    model = Client
+    form_class = ClientCollaboratorAssignForm
+    template_name = 'core/client_collaborators_assign.html'
+    context_object_name = 'client'
+
+    def form_valid(self, form):
+        messages.success(self.request, "Collaborateurs mis à jour pour ce client.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('client_collaborators_assign', kwargs={'pk': self.object.pk})
+
+
+@method_decorator(staff_member_required, name='dispatch')
+class CollaboratorClientAssignView(LoginRequiredMixin, ListView):
+    """Vue permettant à l'admin d'assigner des clients à un collaborateur depuis l'espace collaborateur."""
+    model = Client
+    template_name = 'core/collaborator_client_assign.html'
+    context_object_name = 'clients'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.collaborator = get_object_or_404(User, pk=kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return Client.objects.all().order_by('raison_sociale').prefetch_related('collaborateurs')
+
+    def post(self, request, *args, **kwargs):
+        action = request.POST.get('action')
+        
+        if action == 'unassign_all':
+            self.collaborator.clients_assignes.clear()
+            messages.success(request, f"Tous les clients ont été retirés de {self.collaborator.username}.")
+            return redirect('collaborator_client_assign', pk=self.collaborator.pk)
+
+        form = CollaboratorClientAssignForm(request.POST, collaborator=self.collaborator)
+        if form.is_valid():
+            selected_clients = form.cleaned_data['clients']
+            # Affectation directe via le related_name
+            self.collaborator.clients_assignes.set(selected_clients)
+            messages.success(request, "Affectations mises à jour.")
+            return redirect('collaborator_client_assign', pk=self.collaborator.pk)
+        
+        # Réaffichage avec erreurs
+        context = self.get_context_data()
+        context['assign_form'] = form
+        return self.render_to_response(context)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if 'assign_form' not in context:
+            context['assign_form'] = CollaboratorClientAssignForm(collaborator=self.collaborator)
+        context['collaborator'] = self.collaborator
+        return context
 
 
 def export_declaration_xml(request, pk):
@@ -306,3 +433,5 @@ def export_declaration_excel(request, pk):
     workbook.save(response)
     
     return response
+
+

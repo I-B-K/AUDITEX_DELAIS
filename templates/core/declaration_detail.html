@@ -1,415 +1,605 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Déclaration - {{ declaration.client.raison_sociale }}{% endblock %}
-{% block page_title %}
-    {% if declaration.type_declaration == 'ANNUEL' %}
-        Déclaration Annuelle {{ declaration.annee }}
-    {% else %}
-        Déclaration T{{ declaration.periode }} {{ declaration.annee }}
-    {% endif %}
-{% endblock %}
+{% block title %}Détails de la Déclaration - {{ declaration.annee }} T{{ declaration.periode }}{% endblock %}
 
 {% block content %}
-
-<!-- Structure de la modale d'erreurs -->
-<div id="error-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
-        <div class="mt-3 text-center">
-            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-            </div>
-            <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">Erreurs de validation</h3>
-            <div class="mt-2 px-7 py-3">
-                <div id="error-list" class="text-sm text-gray-700 text-left max-h-64 overflow-y-auto">
-                    <!-- Les erreurs seront injectées ici par JavaScript -->
+<div class="container mx-auto px-4 py-8">
+    <!-- Modal pour les erreurs -->
+    <div id="error-modal" class="hidden fixed z-50 inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Détails des Erreurs</h3>
+                <div class="mt-2 px-7 py-3">
+                    <div id="error-list" class="text-sm text-gray-700 text-left"></div>
                 </div>
-            </div>
-            <div class="items-center px-4 py-3">
-                <button id="close-modal-btn" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300">
-                    Fermer
-                </button>
+                <div class="items-center px-4 py-3">
+                    <button id="close-modal-btn" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                        Fermer
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-
-<form method="post">
-    {% csrf_token %}
-    <div class="bg-white p-6 rounded-xl shadow-md">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
-            <div>
-                <h2 class="text-xl font-bold text-gray-800">{{ declaration.client.raison_sociale }}</h2>
-                <p class="text-sm text-gray-500">Statut : 
-                    {% if declaration.statut == 'SUBMITTED' %}
-                    <span class="font-semibold text-green-600">Soumis</span>
-                    {% else %}
-                    <span class="font-semibold text-yellow-600">Brouillon</span>
-                    {% endif %}
-                </p>
-
-            </div>
-            {% if declaration.statut != 'SUBMITTED' %}
-            <div class="flex space-x-2 mt-4 md:mt-0">
-                <button type="submit" name="save_draft" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-300">Enregistrer Brouillon</button>
-                <button type="submit" name="submit_declaration" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700">Soumettre la Déclaration</button>
-           
-            {% endif %}
-            <a href="{% url 'export_declaration_xml' declaration.pk %}" class="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-700">
-                    Export XML
-                </a>
-
-                <!-- NOUVEAUX BOUTONS -->
-                <a href="{% url 'export_declaration_pdf' declaration.pk %}" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700">
-                    Export PDF
-                </a>
-                <a href="{% url 'export_declaration_excel' declaration.pk %}" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700">
-                    Export Excel
-                </a>
-                 </div>
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Déclaration : {{ declaration.annee }}{% if declaration.type_declaration == 'TRIMESTRIEL' %} - Trimestre {{ declaration.periode }}{% endif %}</h1>
+            <span class="inline-block mt-2 px-4 py-1 rounded-full text-sm font-semibold
+                {% if declaration.statut == 'DRAFT' %} bg-yellow-200 text-yellow-800 {% endif %}
+                {% if declaration.statut == 'SUBMITTED' %} bg-green-200 text-green-800 {% endif %}
+                {% if declaration.statut == 'CANCELLED' %} bg-red-200 text-red-800 {% endif %}">
+                {{ declaration.get_statut_display }}
+            </span>
         </div>
-        
-        <div class="mt-6 border-t pt-6">
-            <h3 class="text-lg font-semibold text-gray-700 mb-4">Informations de la Déclaration</h3>
-            <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
-                <div class="col-span-1 md:col-span-4 lg:col-span-5">{{ form.non_field_errors }}</div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Client</label>
-                    <p class="mt-1 p-2 bg-gray-100 rounded-md">{{ declaration.client }}</p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Période</label>
-                    <p class="mt-1 p-2 bg-gray-100 rounded-md">
-                        {% if declaration.type_declaration == 'ANNUEL' %}
-                            Annuel
-                        {% else %}
-                            T{{ declaration.periode }}
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{% url 'export_declaration_xml' declaration.pk %}" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-md">Export la declaration XML</a>
+            
+        </div>
+    </div>
+
+    <form method="post" id="declaration-form">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Informations Générales</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="id_client" class="block text-sm font-medium text-gray-600">Client</label>
+                        <p class="mt-1 text-lg text-gray-900">{{ declaration.client.raison_sociale }}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="id_annee" class="block text-sm font-medium text-gray-600">Année</label>
+                            <p class="mt-1 text-lg text-gray-900">{{ declaration.annee }}</p>
+                        </div>
+                        <div>
+                            <label for="id_periode" class="block text-sm font-medium text-gray-600">Période</label>
+                            <p class="mt-1 text-lg text-gray-900">Trimestre {{ declaration.periode }}</p>
+                        </div>
+                    </div>
+                     <div>
+                        <label for="{{ form.chiffre_affaires_n1.id_for_label }}" class="block text-sm font-medium text-gray-600">Chiffre d'Affaires N-1</label>
+                        {{ form.chiffre_affaires_n1 }}
+                        {% if form.chiffre_affaires_n1.errors %}
+                            <p class="text-red-500 text-xs italic mt-1">{{ form.chiffre_affaires_n1.errors|first }}</p>
                         {% endif %}
-                    </p>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Année</label>
-                    <p class="mt-1 p-2 bg-gray-100 rounded-md">{{ declaration.annee }}</p>
-                </div>
-                <div>
-                    <label for="{{ form.chiffre_affaires_n1.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.chiffre_affaires_n1.label }}</label>
-                    {{ form.chiffre_affaires_n1 }}
-                    {% for error in form.chiffre_affaires_n1.errors %}
-                        <p class="text-red-600 text-xs mt-1">{{ error }}</p>
-                    {% endfor %}
-                </div>
-                <div>
-                    <label for="{{ form.taux_directeur.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.taux_directeur.label }}</label>
-                    {{ form.taux_directeur }}
-                    {% for error in form.taux_directeur.errors %}
-                        <p class="text-red-600 text-xs mt-1">{{ error }}</p>
-                    {% endfor %}
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Calcul des Pénalités</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="{{ form.taux_directeur.id_for_label }}" class="block text-sm font-medium text-gray-600">Taux Directeur de Bank Al-Maghrib (%)</label>
+                        {{ form.taux_directeur }}
+                        {% if form.taux_directeur.errors %}
+                            <p class="text-red-500 text-xs italic mt-1">{{ form.taux_directeur.errors|first }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600">Montant Total de l'Amende</label>
+                        <p id="total-amende" class="mt-1 text-2xl font-bold text-indigo-600">0.00 MAD</p>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="mt-8 bg-white p-6 rounded-xl shadow-md">
-        <div class="flex flex-col md:flex-row justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold text-gray-700">Factures</h3>
-            {% if declaration.statut != 'SUBMITTED' %}
-            <div class="flex space-x-2 mt-4 md:mt-0">
-
-                <!-- NOUVEAU : Bouton pour exporter le modèle Excel -->
-                <a href="{% url 'export_excel_template' %}" class="bg-teal-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-teal-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5 -ml-1 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                    </svg>
-                    Modèle Excel
-                </a>
-                <input type="file" id="excel-importer" class="hidden" accept=".xlsx, .xls, .csv">
-                <button type="button" id="import-button" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5 -ml-1 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
-                    Importer depuis Excel
-                </button>
-                <button type="button" id="add-form" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700">+ Ajouter une ligne</button>
-            </div>
-            {% endif %}
+        {% if declaration.statut != 'SUBMITTED' %}
+        <div class="flex justify-end space-x-4 mb-8">
+            <button type="submit" name="action" value="save_draft" class="bg-gray-600 text-white font-semibold py-2 px-6 rounded-md hover:bg-gray-700">
+                Enregistrer comme Brouillon
+            </button>
+            <button type="submit" name="action" value="submit_declaration" class="bg-green-600 text-white font-semibold py-2 px-6 rounded-md hover:bg-green-700">
+                Soumettre la Déclaration
+            </button>
         </div>
-        
-        {{ formset.management_form }}
-        
-        {% if formset.errors or formset.non_form_errors %}
-            {{ formset.errors|json_script:"formset-errors-data" }}
-            {{ formset.non_form_errors|json_script:"formset-non-form-errors-data" }}
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                <strong class="font-bold">Des erreurs ont été détectées.</strong>
-                <button type="button" id="open-error-modal-btn" class="ml-4 px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600">Voir les erreurs</button>
-            </div>
         {% endif %}
-        
-        <div class="overflow-x-auto table-container">
-            <table id="facture-table" class="min-w-full text-sm whitespace-nowrap" data-year="{{ declaration.annee }}" data-quarter="{{ declaration.periode }}">
-                <thead class="bg-gray-100 text-xs text-gray-600">
-                    <tr>
-                        <th colspan="6" class="px-4 py-2 border text-center font-semibold">Identification du fournisseur</th>
-                        <th colspan="4" class="px-4 py-2 border text-center font-semibold">Identification facture</th>
-                        <th colspan="4" class="px-4 py-2 border text-center font-semibold">Livraison / Prestation</th>
-                        <th colspan="7" class="px-4 py-2 border text-center font-semibold">Détails Paiement</th>
-                        <th colspan="5" class="px-4 py-2 border text-center font-semibold">Litige</th>
-                        <th colspan="2" class="px-4 py-2 border text-center font-semibold">Paiement</th>
-                        <th colspan="2" class="px-4 py-2 border text-center font-semibold">Pénalités</th>
-                        <th rowspan="2" class="px-2 py-2 border text-center font-semibold align-bottom">Suppr.</th>
-                    </tr>
-                    <tr class="text-xs text-gray-600">
-                        <th class="px-2 py-3 border font-medium" aria-label="fournisseur_if">N° d'IF</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="fournisseur_ice">N° d'ICE</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="fournisseur_raison_sociale">Raison Sociale</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="fournisseur_rc">N° RC</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="fournisseur_adresse">Adresse</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="fournisseur_ville_rc">Ville du RC</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="numero_facture">N° Facture</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="date_emission_facture">Date Émission</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="nature_prestation">Nature Prestation</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="montant_ttc">Montant TTC</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="date_livraison">Date Livraison</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="mois_transaction">Mois (Trans. Périodique)</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="annee_transaction">Année (Trans. Périodique)</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="date_constatation_service">Date Constatation Service</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="date_paiement_prevue">Date Paiement Prévue</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="date_paiement_convenue">Date Paiement Convenue</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="delai_paiement_secteur">Délai Paiement Secteur</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="date_paiement_prevue_secteur">Date Prévue (Secteur)</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="montant_non_paye">Montant Non Payé</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="montant_paye_hors_delai">Montant Payé Hors Délai</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="date_paiement_hors_delai">Date Paiement Hors Délai</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="montant_objet_litige">Montant en Litige</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="date_recours_judiciaire">Date Recours Judiciaire</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="montant_du_apres_jugement">Montant Dû (Jugement)</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="date_jugement_definitif">Date Jugement Définitif</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="mois_suspension_amende">Nombre mois de suspension pénalités</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="mode_paiement">Mode Paiement</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="reference_paiement">Réf. Paiement</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="nombre_mois_retard">Nombre mois de retard</th>
-                        <th class="px-2 py-3 border font-medium" aria-label="amende">Amende</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for form in formset %}
-                    <tr class="facture-formset hover:bg-gray-50 {% if form.errors %}bg-red-50{% endif %}">
-                        {{ form.id }}
-                        <td class="border p-0 align-top {% if form.fournisseur_if.errors %}border-red-400{% endif %}">{{ form.fournisseur_if }}</td>
-                        <td class="border p-0 align-top {% if form.fournisseur_ice.errors %}border-red-400{% endif %}">{{ form.fournisseur_ice }}</td>
-                        <td class="border p-0 align-top {% if form.fournisseur_raison_sociale.errors %}border-red-400{% endif %}">{{ form.fournisseur_raison_sociale }}</td>
-                        <td class="border p-0 align-top {% if form.fournisseur_rc.errors %}border-red-400{% endif %}">{{ form.fournisseur_rc }}</td>
-                        <td class="border p-0 align-top {% if form.fournisseur_adresse.errors %}border-red-400{% endif %}">{{ form.fournisseur_adresse }}</td>
-                        <td class="border p-0 align-top {% if form.fournisseur_ville_rc.errors %}border-red-400{% endif %}">{{ form.fournisseur_ville_rc }}</td>
-                        <td class="border p-0 align-top {% if form.numero_facture.errors %}border-red-400{% endif %}">{{ form.numero_facture }}</td>
-                        <td class="border p-0 align-top {% if form.date_emission_facture.errors %}border-red-400{% endif %}">{{ form.date_emission_facture }}</td>
-                        <td class="border p-0 align-top {% if form.nature_prestation.errors %}border-red-400{% endif %}">{{ form.nature_prestation }}</td>
-                        <td class="border p-0 align-top {% if form.montant_ttc.errors %}border-red-400{% endif %}">{{ form.montant_ttc }}</td>
-                        <td class="border p-0 align-top {% if form.date_livraison.errors %}border-red-400{% endif %}">{{ form.date_livraison }}</td>
-                        <td class="border p-0 align-top {% if form.mois_transaction.errors %}border-red-400{% endif %}">{{ form.mois_transaction }}</td>
-                        <td class="border p-0 align-top {% if form.annee_transaction.errors %}border-red-400{% endif %}">{{ form.annee_transaction }}</td>
-                        <td class="border p-0 align-top {% if form.date_constatation_service.errors %}border-red-400{% endif %}">{{ form.date_constatation_service }}</td>
-                        <td class="border p-0 align-top {% if form.date_paiement_prevue.errors %}border-red-400{% endif %}">{{ form.date_paiement_prevue }}</td>
-                        <td class="border p-0 align-top {% if form.date_paiement_convenue.errors %}border-red-400{% endif %}">{{ form.date_paiement_convenue }}</td>
-                        <td class="border p-0 align-top {% if form.delai_paiement_secteur.errors %}border-red-400{% endif %}">{{ form.delai_paiement_secteur }}</td>
-                        <td class="border p-0 align-top {% if form.date_paiement_prevue_secteur.errors %}border-red-400{% endif %}">{{ form.date_paiement_prevue_secteur }}</td>
-                        <td class="border p-0 align-top {% if form.montant_non_paye.errors %}border-red-400{% endif %}">{{ form.montant_non_paye }}</td>
-                        <td class="border p-0 align-top {% if form.montant_paye_hors_delai.errors %}border-red-400{% endif %}">{{ form.montant_paye_hors_delai }}</td>
-                        <td class="border p-0 align-top {% if form.date_paiement_hors_delai.errors %}border-red-400{% endif %}">{{ form.date_paiement_hors_delai }}</td>
-                        <td class="border p-0 align-top {% if form.montant_objet_litige.errors %}border-red-400{% endif %}">{{ form.montant_objet_litige }}</td>
-                        <td class="border p-0 align-top {% if form.date_recours_judiciaire.errors %}border-red-400{% endif %}">{{ form.date_recours_judiciaire }}</td>
-                        <td class="border p-0 align-top {% if form.montant_du_apres_jugement.errors %}border-red-400{% endif %}">{{ form.montant_du_apres_jugement }}</td>
-                        <td class="border p-0 align-top {% if form.date_jugement_definitif.errors %}border-red-400{% endif %}">{{ form.date_jugement_definitif }}</td>
-                        <td class="border p-0 align-top {% if form.mois_suspension_amende.errors %}border-red-400{% endif %}">{{ form.mois_suspension_amende }}</td>
-                        <td class="border p-0 align-top {% if form.mode_paiement.errors %}border-red-400{% endif %}">{{ form.mode_paiement }}</td>
-                        <td class="border p-0 align-top {% if form.reference_paiement.errors %}border-red-400{% endif %}">{{ form.reference_paiement }}</td>
-                        <td class="border p-0 align-top {% if form.nombre_mois_retard.errors %}border-red-400{% endif %}">{{ form.nombre_mois_retard }}</td>
-                        <td class="border p-0 align-top {% if form.amende.errors %}border-red-400{% endif %}">{{ form.amende }}</td>
-                        <td class="border p-0 text-center align-middle">
-                            <div class="hidden">{{ form.DELETE }}</div>
-                            <button type="button" class="p-2 text-red-500 hover:text-red-700 delete-row-btn" title="Supprimer cette ligne">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <div id="empty-form-template" class="hidden">
-                <table>
-                    <tr class="facture-formset hover:bg-gray-50">
-                        {{ formset.empty_form.id }}
-                        <td class="border p-0">{{ formset.empty_form.fournisseur_if }}</td>
-                        <td class="border p-0">{{ formset.empty_form.fournisseur_ice }}</td>
-                        <td class="border p-0">{{ formset.empty_form.fournisseur_raison_sociale }}</td>
-                        <td class="border p-0">{{ formset.empty_form.fournisseur_rc }}</td>
-                        <td class="border p-0">{{ formset.empty_form.fournisseur_adresse }}</td>
-                        <td class="border p-0">{{ formset.empty_form.fournisseur_ville_rc }}</td>
-                        <td class="border p-0">{{ formset.empty_form.numero_facture }}</td>
-                        <td class="border p-0">{{ formset.empty_form.date_emission_facture }}</td>
-                        <td class="border p-0">{{ formset.empty_form.nature_prestation }}</td>
-                        <td class="border p-0">{{ formset.empty_form.montant_ttc }}</td>
-                        <td class="border p-0">{{ formset.empty_form.date_livraison }}</td>
-                        <td class="border p-0">{{ formset.empty_form.mois_transaction }}</td>
-                        <td class="border p-0">{{ formset.empty_form.annee_transaction }}</td>
-                        <td class="border p-0">{{ formset.empty_form.date_constatation_service }}</td>
-                        <td class="border p-0">{{ formset.empty_form.date_paiement_prevue }}</td>
-                        <td class="border p-0">{{ formset.empty_form.date_paiement_convenue }}</td>
-                        <td class="border p-0">{{ formset.empty_form.delai_paiement_secteur }}</td>
-                        <td class="border p-0">{{ formset.empty_form.date_paiement_prevue_secteur }}</td>
-                        <td class="border p-0">{{ formset.empty_form.montant_non_paye }}</td>
-                        <td class="border p-0">{{ formset.empty_form.montant_paye_hors_delai }}</td>
-                        <td class="border p-0">{{ formset.empty_form.date_paiement_hors_delai }}</td>
-                        <td class="border p-0">{{ formset.empty_form.montant_objet_litige }}</td>
-                        <td class="border p-0">{{ formset.empty_form.date_recours_judiciaire }}</td>
-                        <td class="border p-0">{{ formset.empty_form.montant_du_apres_jugement }}</td>
-                        <td class="border p-0">{{ formset.empty_form.date_jugement_definitif }}</td>
-                        <td class="border p-0">{{ formset.empty_form.mois_suspension_amende }}</td>
-                        <td class="border p-0">{{ formset.empty_form.mode_paiement }}</td>
-                        <td class="border p-0">{{ formset.empty_form.reference_paiement }}</td>
-                        <td class="border p-0">{{ formset.empty_form.nombre_mois_retard }}</td>
-                        <td class="border p-0">{{ formset.empty_form.amende }}</td>
-                        <td class="border p-0 text-center align-middle">
-                            <div class="hidden">{{ formset.empty_form.DELETE }}</div>
-                             <button type="button" class="p-2 text-red-500 hover:text-red-700 delete-row-btn" title="Supprimer cette ligne">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-                            </button>
-                        </td>
-                    </tr>
-                </table>
+
+    <div class="mt-8">
+        <!-- Tabs navigation -->
+        <div class="border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                <a href="#" id="tab-factures" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600">
+                    Etat des Factures Détaillées 
+                </a>
+                <a href="#" id="tab-releve" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                    Relevé de Factures T.V.A.
+                </a>
+            </nav>
+        </div>
+
+        <!-- Tabs content -->
+        <div id="content-factures" class="mt-4">
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Factures</h3>
+                    {% if declaration.statut != 'SUBMITTED' %}
+                    <div class="flex space-x-2 mt-4 md:mt-0">
+                        <button type="submit" name="action" value="save_factures" class="bg-sky-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-sky-700">Enregistrer les Factures</button>
+                        <a href="{% url 'export_excel_template' %}" class="bg-teal-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-teal-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5 -ml-1 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                            Modèle Excel
+                        </a>
+                        <input type="file" id="excel-importer" class="hidden" accept=".xlsx, .xls, .csv">
+                        <button type="button" id="import-button" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5 -ml-1 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            Importer depuis Excel
+                        </button>
+                        <button type="button" id="add-form" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700">+ Ajouter une ligne</button>
+                        <button type="button" id="delete-all-factures" class="bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-800" title="Marquer toutes les lignes pour suppression">Tout Supprimer</button>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {{ formset.management_form }}
+                
+                {% if formset.errors or formset.non_form_errors %}
+                    {{ formset.errors|json_script:"formset-errors-data" }}
+                    {{ formset.non_form_errors|json_script:"formset-non-form-errors-data" }}
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                        <strong class="font-bold">Des erreurs ont été détectées dans les factures détaillées.</strong>
+                        <button type="button" id="open-error-modal-btn" class="ml-4 px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600">Voir les erreurs</button>
+                    </div>
+                {% endif %}
+                
+                <div class="overflow-x-auto table-container">
+                    <table id="facture-table" class="min-w-full text-sm whitespace-nowrap" data-year="{{ declaration.annee }}" data-quarter="{{ declaration.periode }}">
+                        <thead class="bg-gray-100 text-xs text-gray-600">
+                            <tr>
+                                <th colspan="6" class="px-4 py-2 border text-center font-semibold">Identification du fournisseur</th>
+                                <th colspan="4" class="px-4 py-2 border text-center font-semibold">Identification facture</th>
+                                <th colspan="4" class="px-4 py-2 border text-center font-semibold">Livraison / Prestation</th>
+                                <th colspan="7" class="px-4 py-2 border text-center font-semibold">Détails Paiement</th>
+                                <th colspan="5" class="px-4 py-2 border text-center font-semibold">Litige</th>
+                                <th colspan="2" class="px-4 py-2 border text-center font-semibold">Paiement</th>
+                                <th colspan="2" class="px-4 py-2 border text-center font-semibold">Pénalités</th>
+                                <th rowspan="2" class="px-2 py-2 border text-center font-semibold align-bottom no-export">Suppr.</th>
+                            </tr>
+                            <tr class="text-xs text-gray-600">
+                                <th class="px-2 py-3 border font-medium" aria-label="fournisseur_if">N° d'IF</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="fournisseur_ice">N° d'ICE</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="fournisseur_raison_sociale">Raison Sociale</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="fournisseur_rc">N° RC</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="fournisseur_adresse">Adresse</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="fournisseur_ville_rc">Ville du RC</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="numero_facture">N° Facture</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="date_emission_facture">Date Émission</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="nature_prestation">Nature Prestation</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="montant_ttc">Montant TTC</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="date_livraison">Date Livraison</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="mois_transaction">Mois (Trans. Périodique)</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="annee_transaction">Année (Trans. Périodique)</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="date_constatation_service">Date Constatation Service</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="date_paiement_prevue">Date Paiement Prévue</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="date_paiement_convenue">Date Paiement Convenue</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="delai_paiement_secteur">Délai Paiement Secteur</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="date_paiement_prevue_secteur">Date Prévue (Secteur)</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="montant_non_paye">Montant Non Payé</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="montant_paye_hors_delai">Montant Payé Hors Délai</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="date_paiement_hors_delai">Date Paiement Hors Délai</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="montant_objet_litige">Montant en Litige</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="date_recours_judiciaire">Date Recours Judiciaire</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="montant_du_apres_jugement">Montant Dû (Jugement)</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="date_jugement_definitif">Date Jugement Définitif</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="mois_suspension_amende">Nombre mois de suspension pénalités</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="mode_paiement">Mode Paiement</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="reference_paiement">Réf. Paiement</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="nombre_mois_retard">Nombre mois de retard</th>
+                                <th class="px-2 py-3 border font-medium" aria-label="amende">Amende</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for form in formset %}
+                            <tr class="factures-formset hover:bg-gray-50 {% if form.errors %}bg-red-50{% endif %}">
+                                {{ form.id }}
+                                <td class="border p-0 align-top {% if form.fournisseur_if.errors %}border-red-400{% endif %}">{{ form.fournisseur_if }}</td>
+                                <td class="border p-0 align-top {% if form.fournisseur_ice.errors %}border-red-400{% endif %}">{{ form.fournisseur_ice }}</td>
+                                <td class="border p-0 align-top {% if form.fournisseur_raison_sociale.errors %}border-red-400{% endif %}">{{ form.fournisseur_raison_sociale }}</td>
+                                <td class="border p-0 align-top {% if form.fournisseur_rc.errors %}border-red-400{% endif %}">{{ form.fournisseur_rc }}</td>
+                                <td class="border p-0 align-top {% if form.fournisseur_adresse.errors %}border-red-400{% endif %}">{{ form.fournisseur_adresse }}</td>
+                                <td class="border p-0 align-top {% if form.fournisseur_ville_rc.errors %}border-red-400{% endif %}">{{ form.fournisseur_ville_rc }}</td>
+                                <td class="border p-0 align-top {% if form.numero_facture.errors %}border-red-400{% endif %}">{{ form.numero_facture }}</td>
+                                <td class="border p-0 align-top {% if form.date_emission_facture.errors %}border-red-400{% endif %}">{{ form.date_emission_facture }}</td>
+                                <td class="border p-0 align-top {% if form.nature_prestation.errors %}border-red-400{% endif %}">{{ form.nature_prestation }}</td>
+                                <td class="border p-0 align-top {% if form.montant_ttc.errors %}border-red-400{% endif %}">{{ form.montant_ttc }}</td>
+                                <td class="border p-0 align-top {% if form.date_livraison.errors %}border-red-400{% endif %}">{{ form.date_livraison }}</td>
+                                <td class="border p-0 align-top {% if form.mois_transaction.errors %}border-red-400{% endif %}">{{ form.mois_transaction }}</td>
+                                <td class="border p-0 align-top {% if form.annee_transaction.errors %}border-red-400{% endif %}">{{ form.annee_transaction }}</td>
+                                <td class="border p-0 align-top {% if form.date_constatation_service.errors %}border-red-400{% endif %}">{{ form.date_constatation_service }}</td>
+                                <td class="border p-0 align-top {% if form.date_paiement_prevue.errors %}border-red-400{% endif %}">{{ form.date_paiement_prevue }}</td>
+                                <td class="border p-0 align-top {% if form.date_paiement_convenue.errors %}border-red-400{% endif %}">{{ form.date_paiement_convenue }}</td>
+                                <td class="border p-0 align-top {% if form.delai_paiement_secteur.errors %}border-red-400{% endif %}">{{ form.delai_paiement_secteur }}</td>
+                                <td class="border p-0 align-top {% if form.date_paiement_prevue_secteur.errors %}border-red-400{% endif %}">{{ form.date_paiement_prevue_secteur }}</td>
+                                <td class="border p-0 align-top {% if form.montant_non_paye.errors %}border-red-400{% endif %}">{{ form.montant_non_paye }}</td>
+                                <td class="border p-0 align-top {% if form.montant_paye_hors_delai.errors %}border-red-400{% endif %}">{{ form.montant_paye_hors_delai }}</td>
+                                <td class="border p-0 align-top {% if form.date_paiement_hors_delai.errors %}border-red-400{% endif %}">{{ form.date_paiement_hors_delai }}</td>
+                                <td class="border p-0 align-top {% if form.montant_objet_litige.errors %}border-red-400{% endif %}">{{ form.montant_objet_litige }}</td>
+                                <td class="border p-0 align-top {% if form.date_recours_judiciaire.errors %}border-red-400{% endif %}">{{ form.date_recours_judiciaire }}</td>
+                                <td class="border p-0 align-top {% if form.montant_du_apres_jugement.errors %}border-red-400{% endif %}">{{ form.montant_du_apres_jugement }}</td>
+                                <td class="border p-0 align-top {% if form.date_jugement_definitif.errors %}border-red-400{% endif %}">{{ form.date_jugement_definitif }}</td>
+                                <td class="border p-0 align-top {% if form.mois_suspension_amende.errors %}border-red-400{% endif %}">{{ form.mois_suspension_amende }}</td>
+                                <td class="border p-0 align-top {% if form.mode_paiement.errors %}border-red-400{% endif %}">{{ form.mode_paiement }}</td>
+                                <td class="border p-0 align-top {% if form.reference_paiement.errors %}border-red-400{% endif %}">{{ form.reference_paiement }}</td>
+                                <td class="border p-0 align-top {% if form.nombre_mois_retard.errors %}border-red-400{% endif %}">{{ form.nombre_mois_retard }}</td>
+                                <td class="border p-0 align-top {% if form.amende.errors %}border-red-400{% endif %}">{{ form.amende }}</td>
+                                <td class="border p-0 text-center align-middle no-export">
+                                    <div class="hidden">{{ form.DELETE }}</div>
+                                    <button type="button" class="p-2 text-red-500 hover:text-red-700 delete-row-btn" title="Supprimer cette ligne">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <div id="empty-form-template" class="hidden">
+                        <table>
+                            <tr class="factures-formset hover:bg-gray-50">
+                                {{ formset.empty_form.id }}
+                                <td class="border p-0">{{ formset.empty_form.fournisseur_if }}</td>
+                                <td class="border p-0">{{ formset.empty_form.fournisseur_ice }}</td>
+                                <td class="border p-0">{{ formset.empty_form.fournisseur_raison_sociale }}</td>
+                                <td class="border p-0">{{ formset.empty_form.fournisseur_rc }}</td>
+                                <td class="border p-0">{{ formset.empty_form.fournisseur_adresse }}</td>
+                                <td class="border p-0">{{ formset.empty_form.fournisseur_ville_rc }}</td>
+                                <td class="border p-0">{{ formset.empty_form.numero_facture }}</td>
+                                <td class="border p-0">{{ formset.empty_form.date_emission_facture }}</td>
+                                <td class="border p-0">{{ formset.empty_form.nature_prestation }}</td>
+                                <td class="border p-0">{{ formset.empty_form.montant_ttc }}</td>
+                                <td class="border p-0">{{ formset.empty_form.date_livraison }}</td>
+                                <td class="border p-0">{{ formset.empty_form.mois_transaction }}</td>
+                                <td class="border p-0">{{ formset.empty_form.annee_transaction }}</td>
+                                <td class="border p-0">{{ formset.empty_form.date_constatation_service }}</td>
+                                <td class="border p-0">{{ formset.empty_form.date_paiement_prevue }}</td>
+                                <td class="border p-0">{{ formset.empty_form.date_paiement_convenue }}</td>
+                                <td class="border p-0">{{ formset.empty_form.delai_paiement_secteur }}</td>
+                                <td class="border p-0">{{ formset.empty_form.date_paiement_prevue_secteur }}</td>
+                                <td class="border p-0">{{ formset.empty_form.montant_non_paye }}</td>
+                                <td class="border p-0">{{ formset.empty_form.montant_paye_hors_delai }}</td>
+                                <td class="border p-0">{{ formset.empty_form.date_paiement_hors_delai }}</td>
+                                <td class="border p-0">{{ formset.empty_form.montant_objet_litige }}</td>
+                                <td class="border p-0">{{ formset.empty_form.date_recours_judiciaire }}</td>
+                                <td class="border p-0">{{ formset.empty_form.montant_du_apres_jugement }}</td>
+                                <td class="border p-0">{{ formset.empty_form.date_jugement_definitif }}</td>
+                                <td class="border p-0">{{ formset.empty_form.mois_suspension_amende }}</td>
+                                <td class="border p-0">{{ formset.empty_form.mode_paiement }}</td>
+                                <td class="border p-0">{{ formset.empty_form.reference_paiement }}</td>
+                                <td class="border p-0">{{ formset.empty_form.nombre_mois_retard }}</td>
+                                <td class="border p-0">{{ formset.empty_form.amende }}</td>
+                                <td class="border p-0 text-center align-middle no-export">
+                                    <div class="hidden">{{ formset.empty_form.DELETE }}</div>
+                                     <button type="button" class="p-2 text-red-500 hover:text-red-700 delete-row-btn" title="Supprimer cette ligne">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-releve" class="mt-4 hidden">
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Relevé de Factures</h3>
+                    {% if declaration.statut != 'SUBMITTED' %}
+                    <div class="flex flex-wrap gap-2 mt-4 md:mt-0">
+                        <button type="submit" name="action" value="save_releves" class="bg-sky-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-sky-700">Enregistrer le Relevé</button>
+                        <a href="{% static 'core/excel_templates/Tableau-Deductions.xls' %}" download class="bg-teal-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-teal-700">Modèle Relevé</a>
+                        <input type="file" id="releve-excel-importer" class="hidden" accept=".xlsx, .xls, .csv">
+                        <button type="button" id="import-releve-button" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5 -ml-1 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
+                            Importer depuis Excel
+                        </button>
+                        <button type="button" id="export-releve-61-120" class="bg-amber-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-amber-700" title="Exporter les lignes avec 61 à 120 jours">Export 61-120 j</button>
+                        <button type="button" id="export-releve-gt-120" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700" title="Exporter les lignes avec plus de 120 jours">Export >120 j</button>
+                        <button type="button" id="add-releve-form" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700">+ Ajouter une ligne</button>
+                        <button type="button" id="delete-all-releves" class="bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-800" title="Marquer toutes les lignes pour suppression">Tout Supprimer</button>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {{ releve_formset.management_form }}
+
+                {% if releve_formset.errors or releve_formset.non_form_errors %}
+                    {{ releve_formset.errors|json_script:"releve-formset-errors-data" }}
+                    {{ releve_formset.non_form_errors|json_script:"releve-formset-non-form-errors-data" }}
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                        <strong class="font-bold">Des erreurs ont été détectées dans le relevé de factures.</strong>
+                        <button type="button" id="open-releve-error-modal-btn" class="ml-4 px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600">Voir les erreurs</button>
+                    </div>
+                {% endif %}
+
+                <div class="overflow-x-auto table-container">
+                    <table id="releve-table" class="min-w-full text-sm whitespace-nowrap">
+                        <thead class="bg-gray-100 text-xs text-gray-600">
+                            <tr>
+                                <th class="px-2 py-3 border font-medium">Mois</th>
+                                <th class="px-2 py-3 border font-medium">N° Facture</th>
+                                <th class="px-2 py-3 border font-medium">Date Facture</th>
+                                <th class="px-2 py-3 border font-medium">Désignation</th>
+                                <th class="px-2 py-3 border font-medium">Nom Fournisseur</th>
+                                <th class="px-2 py-3 border font-medium">IF Fournisseur</th>
+                                <th class="px-2 py-3 border font-medium">ICE Fournisseur</th>
+                                <th class="px-2 py-3 border font-medium">Montant HT</th>
+                                <th class="px-2 py-3 border font-medium">Code TVA</th>
+                                <th class="px-2 py-3 border font-medium">Montant TVA</th>
+                                <th class="px-2 py-3 border font-medium">Montant TTC</th>
+                                <th class="px-2 py-3 border font-medium">Mode Paiement</th>
+                                <th class="px-2 py-3 border font-medium">Date Paiement</th>
+                                <th class="px-2 py-3 border font-medium">Prorata</th>
+                                <th class="px-2 py-3 border font-medium">Nombre de Jours</th>
+                                <th class="px-2 py-2 border text-center font-semibold align-bottom no-export">Suppr.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for form in releve_formset %}
+                            <tr class="releves-formset hover:bg-gray-50 {% if form.errors %}bg-red-50{% endif %}">
+                                {{ form.id }}
+                                <td class="border p-0 align-top">{{ form.mois }}</td>
+                                <td class="border p-0 align-top">{{ form.numero_facture }}</td>
+                                <td class="border p-0 align-top">{{ form.date_facture }}</td>
+                                <td class="border p-0 align-top">{{ form.designation }}</td>
+                                <td class="border p-0 align-top">{{ form.nom_fournisseur }}</td>
+                                <td class="border p-0 align-top">{{ form.if_fournisseur }}</td>
+                                <td class="border p-0 align-top">{{ form.ice_fournisseur }}</td>
+                                <td class="border p-0 align-top">{{ form.montant_ht }}</td>
+                                <td class="border p-0 align-top">{{ form.code_tva }}</td>
+                                <td class="border p-0 align-top">{{ form.montant_tva }}</td>
+                                <td class="border p-0 align-top">{{ form.montant_ttc }}</td>
+                                <td class="border p-0 align-top">{{ form.mode_paiement }}</td>
+                                <td class="border p-0 align-top">{{ form.date_paiement }}</td>
+                                <td class="border p-0 align-top">{{ form.prorata }}</td>
+                                <td class="border p-0 align-top">{{ form.nombre_jours }}</td>
+                                <td class="border p-0 text-center align-middle no-export">
+                                    <div class="hidden">{{ form.DELETE }}</div>
+                                    <button type="button" class="p-2 text-red-500 hover:text-red-700 delete-releve-row-btn" title="Supprimer cette ligne">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <div id="empty-releve-form-template" class="hidden">
+                        <table>
+                            <tr class="releves-formset hover:bg-gray-50">
+                                {{ releve_formset.empty_form.id }}
+                                <td class="border p-0">{{ releve_formset.empty_form.mois }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.numero_facture }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.date_facture }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.designation }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.nom_fournisseur }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.if_fournisseur }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.ice_fournisseur }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.montant_ht }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.code_tva }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.montant_tva }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.montant_ttc }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.mode_paiement }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.date_paiement }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.prorata }}</td>
+                                <td class="border p-0">{{ releve_formset.empty_form.nombre_jours }}</td>
+                                <td class="border p-0 text-center align-middle no-export">
+                                    <div class="hidden">{{ releve_formset.empty_form.DELETE }}</div>
+                                    <button type="button" class="p-2 text-red-500 hover:text-red-700 delete-releve-row-btn" title="Supprimer cette ligne">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </form>
 
+<style>
+    #facture-table th, #facture-table td,
+    #releve-table th, #releve-table td {
+        min-width: 150px; /* Largeur minimale pour toutes les cellules */
+        padding: 8px; /* Ajoute un peu d'espace à l'intérieur des cellules */
+    }
+    #facture-table th[aria-label="fournisseur_raison_sociale"],
+    #facture-table td:has([name$="fournisseur_raison_sociale"]),
+    #releve-table th:nth-child(5), /* Nom Fournisseur */
+    #releve-table td:nth-child(5) {
+        min-width: 250px; /* Plus large pour la raison sociale */
+    }
+    #facture-table th[aria-label="fournisseur_adresse"],
+    #facture-table td:has([name$="fournisseur_adresse"]) {
+        min-width: 300px; /* Encore plus large pour l'adresse */
+    }
+    #facture-table th[aria-label="nature_prestation"],
+    #facture-table td:has([name$="nature_prestation"]),
+    #releve-table th:nth-child(4), /* Désignation */
+    #releve-table td:nth-child(4) {
+        min-width: 300px; /* Et pour la nature de la prestation */
+    }
+    #facture-table th.no-export,
+    #facture-table td.no-export,
+    #releve-table th.no-export,
+    #releve-table td.no-export {
+        min-width: 50px; /* Plus étroit pour la colonne de suppression */
+    }
+</style>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const tableBody = document.querySelector('#facture-table tbody');
-    const totalFormsInput = document.getElementById('id_factures-TOTAL_FORMS');
-    const emptyFormTemplate = document.getElementById('empty-form-template').querySelector('tr').cloneNode(true);
+$(document).ready(function() {
+    // --- Tab Logic ---
+    const tabFactures = document.getElementById('tab-factures');
+    const tabReleve = document.getElementById('tab-releve');
+    const contentFactures = document.getElementById('content-factures');
+    const contentReleve = document.getElementById('content-releve');
 
-    const addFormButton = document.getElementById('add-form');
-    if (addFormButton) {
-        addFormButton.addEventListener('click', () => addFormRow());
-    }
-
-    function addFormRow() {
-        let formNum = parseInt(totalFormsInput.value);
-        let newForm = emptyFormTemplate.cloneNode(true);
-        let newFormHtml = newForm.innerHTML.replace(/__prefix__/g, formNum);
-        let tempTr = document.createElement('tr');
-        tempTr.className = "facture-formset hover:bg-gray-50";
-        tempTr.innerHTML = newFormHtml;
-        tempTr.querySelectorAll('input').forEach(input => {
-            input.value = '';
-        });
-        tableBody.appendChild(tempTr);
-        totalFormsInput.value = formNum + 1;
-        return tempTr;
-    }
-
-    const table = document.getElementById('facture-table');
-    if (table) {
-        table.addEventListener('click', function(event) {
-            const deleteButton = event.target.closest('.delete-row-btn');
-            if (!deleteButton) return;
-            event.preventDefault();
-            const row = deleteButton.closest('tr');
-            if (!row) return;
-            const deleteCheckbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
-            if (deleteCheckbox) {
-                deleteCheckbox.checked = true;
+    function activateTab(name) {
+        if (name === 'releve') {
+            contentReleve.classList.remove('hidden');
+            contentFactures.classList.add('hidden');
+            tabReleve.classList.add('border-indigo-500', 'text-indigo-600');
+            tabReleve.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            tabFactures.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            tabFactures.classList.remove('border-indigo-500', 'text-indigo-600');
+            if ($.fn.DataTable.isDataTable('#releve-table')) {
+                $('#releve-table').DataTable().columns.adjust();
             }
-            row.style.display = 'none';
-        });
+            localStorage.setItem('declarationActiveTab', 'releve');
+        } else { // default factures
+            contentFactures.classList.remove('hidden');
+            contentReleve.classList.add('hidden');
+            tabFactures.classList.add('border-indigo-500', 'text-indigo-600');
+            tabFactures.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            tabReleve.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            tabReleve.classList.remove('border-indigo-500', 'text-indigo-600');
+            localStorage.setItem('declarationActiveTab', 'factures');
+        }
     }
 
-    const errorModal = document.getElementById('error-modal');
-    const openModalBtn = document.getElementById('open-error-modal-btn');
-    const closeModalBtn = document.getElementById('close-modal-btn');
-    const errorListDiv = document.getElementById('error-list');
-
-    if (openModalBtn) {
-        openModalBtn.addEventListener('click', () => {
-            errorListDiv.innerHTML = ''; 
-            const errorsDataEl = document.getElementById('formset-errors-data');
-            const nonFormErrorsDataEl = document.getElementById('formset-non-form-errors-data');
-            const errorsData = errorsDataEl ? JSON.parse(errorsDataEl.textContent) : [];
-            const nonFormErrorsData = nonFormErrorsDataEl ? JSON.parse(nonFormErrorsDataEl.textContent) : [];
-
-            let html = '<ul class="list-disc list-inside space-y-2">';
-            if (nonFormErrorsData.length > 0) {
-                html += `<li><strong class="font-semibold">Erreurs générales:</strong><ul>`;
-                nonFormErrorsData.forEach(error => { html += `<li class="ml-4">${error}</li>`; });
-                html += '</ul></li>';
-            }
-            errorsData.forEach((formErrors, index) => {
-                if (formErrors && Object.keys(formErrors).length > 0) {
-                    html += `<li><strong class="font-semibold">Ligne ${index + 1}:</strong><ul>`;
-                    for (const [field, errorMessages] of Object.entries(formErrors)) {
-                        const fieldLabel = document.querySelector(`th[aria-label="${field}"]`)?.textContent || field;
-                        const messages = Array.isArray(errorMessages) ? errorMessages.join(', ') : errorMessages;
-                        html += `<li class="ml-4">${fieldLabel}: ${messages}</li>`;
-                    }
-                    html += '</ul></li>';
-                }
-            });
-            html += '</ul>';
-            errorListDiv.innerHTML = html;
-            errorModal.style.display = 'block';
-        });
-    }
-
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener('click', () => { errorModal.style.display = 'none'; });
-    }
-    window.addEventListener('click', (event) => {
-        if (event.target == errorModal) { errorModal.style.display = 'none'; }
+    tabFactures.addEventListener('click', (e) => {
+        e.preventDefault();
+        activateTab('factures');
     });
 
-    const importButton = document.getElementById('import-button');
-    const excelImporterInput = document.getElementById('excel-importer');
+    tabReleve.addEventListener('click', (e) => {
+        e.preventDefault();
+        activateTab('releve');
+    });
 
-    if (importButton) {
-        importButton.addEventListener('click', () => excelImporterInput.click());
-        excelImporterInput.addEventListener('change', handleFileImport);
+    // Restaure l'onglet actif après rechargement
+    const savedTab = localStorage.getItem('declarationActiveTab');
+    if (savedTab === 'releve') {
+        activateTab('releve');
+    } else {
+        activateTab('factures');
+    }
+
+    function calculateDayDifference(startDate, endDate) {
+        // Calcule le nombre exact de jours calendaires (0 si même jour), sans effets de fuseau horaire
+        if (!(startDate instanceof Date) || isNaN(startDate) || !(endDate instanceof Date) || isNaN(endDate)) return '';
+        if (endDate < startDate) return '';
+        const startUTC = Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const endUTC = Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        return Math.floor((endUTC - startUTC) / (1000 * 60 * 60 * 24));
+    }
+    function calculateMonthDifference(startDate, endDate) {
+        if (!(startDate instanceof Date) || isNaN(startDate) || !(endDate instanceof Date) || isNaN(endDate) || endDate < startDate) return 0;
+        let startYear = startDate.getFullYear();
+        let startMonth = startDate.getMonth();
+        let endYear = endDate.getFullYear();
+        let endMonth = endDate.getMonth();
+        return (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+    }
+
+    // --- Formset Logic ---
+    function setupFormset(prefix, tableId, addButtonId, emptyFormTemplateId, deleteButtonSelector, dataTableInstance) {
+        const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+        const emptyFormTemplate = document.getElementById(emptyFormTemplateId).querySelector('tr');
+        const addButton = document.getElementById(addButtonId);
+        const tableEl = document.getElementById(tableId);
+
+        const addFormRow = function() {
+            let formNum = parseInt(totalFormsInput.value);
+            let newFormHtml = emptyFormTemplate.innerHTML.replace(/__prefix__/g, formNum);
+            let tempTr = document.createElement('tr');
+            tempTr.className = `${prefix}-formset hover:bg-gray-50`;
+            tempTr.innerHTML = newFormHtml;
+            
+            tempTr.querySelectorAll('input, select').forEach(input => {
+                if (input.type !== 'hidden') input.value = '';
+            });
+            
+            dataTableInstance.row.add($(tempTr)).draw();
+            totalFormsInput.value = formNum + 1;
+            return tempTr;
+        }
+
+        if (addButton) {
+            addButton.addEventListener('click', addFormRow);
+        }
+
+        if (tableEl) {
+            tableEl.addEventListener('click', function(event) {
+                const deleteButton = event.target.closest(deleteButtonSelector);
+                if (!deleteButton) return;
+                event.preventDefault();
+                const row = deleteButton.closest('tr');
+                if (!row) return;
+                const deleteCheckbox = row.querySelector(`input[type="checkbox"][name$="-DELETE"]`);
+                if (deleteCheckbox) {
+                    deleteCheckbox.checked = true;
+                }
+                row.style.display = 'none';
+            });
+        }
+        return addFormRow;
+    }
+
+    // --- Excel Import Logic ---
+    function setupExcelImport(buttonId, inputId, tableId, formsetPrefix, addFormRowFunction, fieldMap, keyHeader) {
+        const importButton = document.getElementById(buttonId);
+        const excelImporterInput = document.getElementById(inputId);
+
+        if (importButton) {
+            importButton.addEventListener('click', () => excelImporterInput.click());
+            excelImporterInput.addEventListener('change', (event) => handleFileImport(event, tableId, formsetPrefix, addFormRowFunction, fieldMap, keyHeader));
+        }
     }
     
     function parseDate(value) {
         if (!value) return null;
-        if (value instanceof Date && !isNaN(value)) return value.toISOString().split('T')[0];
+
+        // Handle if value is already a valid Date object (from cellDates:true)
+        if (value instanceof Date && !isNaN(value)) {
+            // Adjust for timezone offset to get correct YYYY-MM-DD
+            const tzoffset = value.getTimezoneOffset() * 60000; //offset in milliseconds
+            const localISOTime = (new Date(value - tzoffset)).toISOString().split('T')[0];
+            return localISOTime;
+        }
+
+        // Handle Excel's numeric date format
         if (typeof value === 'number') {
             const date = new Date(Math.round((value - 25569) * 86400 * 1000));
-            if (!isNaN(date)) return date.toISOString().split('T')[0];
-        }
-        if (typeof value === 'string') {
-            let year, month, day;
-            let parts = value.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
-            if (parts) {
-                day = parseInt(parts[1], 10);
-                month = parseInt(parts[2], 10);
-                year = parseInt(parts[3], 10);
-            } else {
-                parts = value.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
-                if (parts) {
-                    year = parseInt(parts[1], 10);
-                    month = parseInt(parts[2], 10);
-                    day = parseInt(parts[3], 10);
-                }
+            if (!isNaN(date.getTime())) {
+                return date.toISOString().split('T')[0];
             }
-            if (year && month && day && year > 1900 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-                const monthStr = String(month).padStart(2, '0');
-                const dayStr = String(day).padStart(2, '0');
-                return `${year}-${monthStr}-${dayStr}`;
+        }
+        
+        // Handle string dates (e.g., "YYYY-MM-DD", "DD/MM/YYYY")
+        if (typeof value === 'string') {
+            let date;
+            const parts = value.split(/[\/\-]/); // Split by / or -
+            if (parts.length === 3) {
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10);
+                const year = parseInt(parts[2], 10);
+                // Basic check for DD/MM/YYYY format
+                if (day > 0 && day <= 31 && month > 0 && month <= 12 && year > 1900) {
+                     // Month is 0-indexed in JS Date
+                    date = new Date(Date.UTC(year, month - 1, day));
+                } else {
+                    // Fallback for other string formats
+                    date = new Date(value);
+                }
+            } else {
+                 date = new Date(value);
+            }
+
+            if (date && !isNaN(date.getTime())) {
+                return date.toISOString().split('T')[0];
             }
         }
         return null;
     }
 
-    function handleFileImport(event) {
+    function handleFileImport(event, tableId, formsetPrefix, addFormRowFunction, fieldMap, keyHeader) {
         const file = event.target.files[0];
         if (!file) return;
 
@@ -423,10 +613,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             let headerRowIndex = -1;
             let headers = [];
-            const keyHeader = "RAISON SOCIALE";
+            const upperKeyHeader = keyHeader.toUpperCase();
+
             for(let i = 0; i < jsonData.length; i++) {
                 const cleanedRow = jsonData[i].map(h => String(h).trim().toUpperCase());
-                if (cleanedRow.includes(keyHeader) || cleanedRow.includes("NOMETPRÉNOMOURAISONSOCIALE")) {
+                // The key header for the 'factures' table can be one of two values.
+                if (cleanedRow.includes(upperKeyHeader) || (formsetPrefix === 'factures' && cleanedRow.includes("NOMETPRÉNOMOURAISONSOCIALE"))) {
                     headerRowIndex = i;
                     headers = cleanedRow;
                     break;
@@ -449,7 +641,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 'CHÈQUE': '2', 'CHEQUE': '2',
                 'PRÉLÈVEMENT': '3', 'PRELEVEMENT': '3',
                 'VIREMENT': '4',
-                'EFFETS': '5'
+                'EFFETS': '5',
+                'COMPENSATION': '6',
+                'AUTRES': '7'
             };
             
             const monthNameMap = {
@@ -458,177 +652,396 @@ document.addEventListener('DOMContentLoaded', function() {
                 'SEPTEMBRE': '9', 'OCTOBRE': '10', 'NOVEMBRE': '11', 'DECEMBRE': '12'
             };
 
-            const fieldMap = {
-                'fournisseur_if': ["N° D'IF", "N° IF"], 'fournisseur_ice': ["N° D'ICE", "N° ICE"], 'fournisseur_raison_sociale': ["RAISON SOCIALE", "NOMETPRÉNOMOURAISONSOCIALE"], 'fournisseur_rc': ["N° RC"], 'fournisseur_adresse': ["ADRESSE", "ADRESSE SIÈGE SOCIAL"], 'fournisseur_ville_rc': ["VILLE DU RC"], 'numero_facture': ["N° DE FACTURE", "N° FACT"], 'date_emission_facture': ["DATE D'ÉMISSION", "DATE D’ÉMISSION", "DATE DEMISSION", "DATE FACT"], 'nature_prestation': ["NATURE PRESTATION", "NATURE DES MARCHANDISES LIVRÉES, DES TRAVAUX EXÉCUTÉS OU DES SERVICES RENDUS", "DESIGNAT M/SES"], 'date_livraison': ["DATE LIVRAISON", "DATE DE LIVRAISON DES MARCHANDISES, DE L’EXÉCUTION DES TRAVAUX OU DE LA PRESTATION DES SERVICES"], 'mois_transaction': ["MOIS (TRANSACTIONS D’UNE PÉRIODICITÉ NE DÉPASSANT PAS UN MOIS)", "MOIS"], 'annee_transaction': ["ANNÉE (TRANSACTIONS D’UNE PÉRIODICITÉ NE DÉPASSANT PAS UN MOIS)2", "ANNÉE"],
-                'date_constatation_service': ["DATE DE LA CONSTATATION DU SERVICE FAIT POUR LES ÉTABLISSEMENTS PUBLICS", "DATE CONSTATATION SERVICE"],
-                'date_paiement_prevue': ["DATE PRÉVUE POUR LE PAIEMENT DE LA FACTURE", "DATE PAIEMENT PRÉVUE"],
-                'date_paiement_convenue': ["DATE CONVENUE POUR LE PAIEMENT DE LA FACTURE", "DATE PAIEMENT CONVENUE"],
-                'delai_paiement_secteur': ["DÉLAI DE PAIEMENT DES FACTURES POUR LE SECTEUR D’ACTIVITÉ(2)", "DELAIS CONVENTION", "DÉLAI PAIEMENT SECTEUR"],
-                'date_paiement_prevue_secteur': ["DATE PRÉVUE POUR LE PAIEMENT DE LA FACTURE SELON LE DÉLAI FIXÉ AU SECTEUR(2)", "DATE PRÉVUE (SECTEUR)"],
-                'montant_ttc': ["MONTANT DE LA FACTURE TTC", "MONTANT TTC"], 'montant_non_paye': ["MONTANT NON ENCORE PAYÉ DE LA FACTURE"],
-                'montant_paye_hors_delai': ["MONTANT PAYÉ TOTALEMENT OU PARTIELLEMENT, HORS DÉLAI AU COURS DE LA PÉRIODE OBJET DE LA DÉCLARATION"],
-                'date_paiement_hors_delai': ["DATE DU PAIEMENT TOTAL OU PARTIEL, HORS DÉLAI", "DATE EFFECTIVE DE PAIEMENT", "DATE PAIEMENT HORS DÉLAI"],
-                'mode_paiement': ["MODE DE PAIEMENT", "MODE PAIE"],
-                'reference_paiement': ["RÉFÉRENCES DU PAIEMENT", "REF. PAIEMENT", "REF PAIEMENT"],
-                'montant_objet_litige': ["MONTANT OBJET DE LITIGES SOUMIS À LA JUSTICE(3)", "MONTANT EN LITIGE"],
-                'date_recours_judiciaire': ["DATE DU RECOURS JUDICIAIRE(3)", "DATE RECOURS JUDICIAIRE"],
-                'montant_du_apres_jugement': ["MONTANT DÛ APRÈS JUGEMENT(3)", "MONTANT DÛ (JUGEMENT)"],
-                'date_jugement_definitif': ["DATE DU JUGEMENT DÉFINITIF(3)", "DATE JUGEMENT DÉFINITIF"],
-                'mois_suspension_amende': ["NOMBRE DE MOIS AYANT FAIT L'OBJET DE SUSPENSION D'APPLICATION DE L'AMENDE PÉCUNIAIRE", "NOMBRE MOIS DE SUSPENSION PÉNALITÉS"]
-            };
-
             for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
                 const rowData = jsonData[i];
-                if (!rowData || rowData.length === 0 || String(rowData[headerMap[keyHeader]] || "").trim() === "") continue;
+                // Stop if the row is empty or the key cell is empty
+                if (!rowData || rowData.length === 0 || String(rowData[headerMap[upperKeyHeader]] || "").trim() === "") continue;
 
-                const newRow = addFormRow();
-                const formNum = parseInt(totalFormsInput.value) - 1;
+                const newRow = addFormRowFunction();
 
-                for (const [fieldName, possibleHeaders] of Object.entries(fieldMap)) {
-                    const input = newRow.querySelector(`[name="factures-${formNum}-${fieldName}"]`);
+                for (const [fieldName, headers] of Object.entries(fieldMap)) {
+                    const input = newRow.querySelector(`[name$="-${fieldName}"]`);
                     if (!input) continue;
 
+                    const possibleHeaders = Array.isArray(headers) ? headers : [headers];
+
                     for (const header of possibleHeaders) {
-                        const colIndex = headerMap[header];
+                        const colIndex = headerMap[header.toUpperCase()];
                         if (colIndex !== undefined && rowData[colIndex] !== null && rowData[colIndex] !== undefined) {
                             let value = rowData[colIndex];
                             
                             if (fieldName === 'mode_paiement') {
-                                const modeCode = paymentModeMap[String(value).trim().toUpperCase()];
-                                if (modeCode) {
-                                    input.value = modeCode;
+                                let finalValue = null;
+                                const stringValue = String(value).trim();
+                                
+                                // Check for "1-Espèces" format by looking for a digit followed by a hyphen
+                                if (/^[1-7]\s*-/.test(stringValue)) {
+                                    finalValue = stringValue.charAt(0);
+                                } else {
+                                    const upperValue = stringValue.toUpperCase();
+                                    // Check if the value is already a valid numeric code
+                                    if (['1', '2', '3', '4', '5', '6', '7'].includes(stringValue)) {
+                                        finalValue = stringValue;
+                                    } else {
+                                        // Otherwise, try to map it from the text value
+                                        finalValue = paymentModeMap[upperValue];
+                                    }
                                 }
-                            } else if (fieldName === 'mois_transaction') {
+
+                                if (finalValue) {
+                                    input.value = finalValue;
+                                }
+                            } else if (fieldName === 'mois' || fieldName === 'mois_transaction') {
+                                // Handle month names for both 'mois' and 'mois_transaction'
                                 const monthCode = monthNameMap[String(value).trim().toUpperCase()];
                                 input.value = monthCode || value;
                             } else if (input.type === 'date') {
                                 const formattedDate = parseDate(value);
-                                if (formattedDate) {
-                                    input.value = formattedDate;
-                                }
+                                if (formattedDate) input.value = formattedDate;
                             } else {
                                 input.value = value;
                             }
-                            break;
+                            break; // Move to the next fieldName once a value is found
                         }
                     }
                 }
             }
         };
         reader.readAsArrayBuffer(file);
-        event.target.value = '';
+        event.target.value = ''; // Reset file input
     }
 
-    const year = parseInt(table.dataset.year);
-    const quarter = parseInt(table.dataset.quarter);
-    const tauxDirecteurInput = document.getElementById('id_taux_directeur');
+    // --- Calculations Logic ---
+    function setupCalculations(tableId) {
+        const tableEl = document.getElementById(tableId);
+        const year = parseInt(tableEl.dataset.year);
+        const quarter = parseInt(tableEl.dataset.quarter);
+        const tauxDirecteurInput = document.getElementById('id_taux_directeur');
+        const totalAmendeEl = document.getElementById('total-amende');
+        const ADDITIONAL_RATE = 0.0085;
 
-    const ADDITIONAL_RATE = 0.0085;
-
-    function getQuarterEndDate(year, quarter) {
-        if (quarter === 1) return new Date(year, 2, 31); // 31 Mars
-        if (quarter === 2) return new Date(year, 5, 30); // 30 Juin
-        if (quarter === 3) return new Date(year, 8, 30); // 30 Septembre
-        if (quarter === 4) return new Date(year, 11, 31); // 31 Décembre
-        return null;
-    }
-
-    function calculateMonthDifference(startDate, endDate) {
-        if (!startDate || !endDate || isNaN(startDate) || isNaN(endDate) || endDate < startDate) return 0;
-        
-        let startYear = startDate.getFullYear();
-        let startMonth = startDate.getMonth();
-        let endYear = endDate.getFullYear();
-        let endMonth = endDate.getMonth();
-        
-        let monthDiff = (endYear - startYear) * 12 + (endMonth - startMonth);
-        
-        return monthDiff + 1;
-    }
-
-    function updateCalculations(row) {
-        // Récupération des champs
-        const datePaiementPrevueInput = row.querySelector('input[name$="-date_paiement_prevue"]');
-        const datePaiementConvenueInput = row.querySelector('input[name$="-date_paiement_convenue"]');
-        const datePaiementPrevueSecteurInput = row.querySelector('input[name$="-date_paiement_prevue_secteur"]');
-        const montantNonPayeInput = row.querySelector('input[name$="-montant_non_paye"]');
-        const montantPayeHorsDelaiInput = row.querySelector('input[name$="-montant_paye_hors_delai"]');
-        const datePaiementHorsDelaiInput = row.querySelector('input[name$="-date_paiement_hors_delai"]');
-        const moisRetardInput = row.querySelector('input[name$="-nombre_mois_retard"]');
-        const amendeInput = row.querySelector('input[name$="-amende"]');
-
-        if (!moisRetardInput || !amendeInput) return;
-
-        // Détermination de la date de départ (échéance)
-        let startDate = null;
-        if (datePaiementPrevueInput && datePaiementPrevueInput.value) startDate = new Date(datePaiementPrevueInput.value);
-        else if (datePaiementConvenueInput && datePaiementConvenueInput.value) startDate = new Date(datePaiementConvenueInput.value);
-        else if (datePaiementPrevueSecteurInput && datePaiementPrevueSecteurInput.value) startDate = new Date(datePaiementPrevueSecteurInput.value);
-
-        const montantNonPaye = parseFloat(montantNonPayeInput.value) || 0;
-        const montantPayeHorsDelai = parseFloat(montantPayeHorsDelaiInput.value) || 0;
-        
-        let endDate = null;
-        let monthsDifference = 0;
-        let baseAmount = 0;
-
-        // Calcul des mois de retard
-        if (montantNonPaye > 0) {
-            endDate = getQuarterEndDate(year, quarter);
-            monthsDifference = calculateMonthDifference(startDate, endDate);
-            baseAmount = montantNonPaye;
-        } else if (montantPayeHorsDelai > 0 && datePaiementHorsDelaiInput.value) {
-            endDate = new Date(datePaiementHorsDelaiInput.value);
-            if (startDate && endDate && startDate.getTime() === endDate.getTime()) {
-        monthsDifference = 0;
-        } else {
-            monthsDifference = calculateMonthDifference(startDate, endDate);
+        function getQuarterEndDate(year, quarter) {
+            if (quarter === 1) return new Date(year, 2, 31);
+            if (quarter === 2) return new Date(year, 5, 30);
+            if (quarter === 3) return new Date(year, 8, 30);
+            if (quarter === 4) return new Date(year, 11, 31);
+            return null;
         }
 
-            baseAmount = montantPayeHorsDelai;
-        }
-        
-        moisRetardInput.value = monthsDifference;
+        function updateRowCalculations(row) {
+            const datePaiementPrevueInput = row.querySelector('input[name$="-date_paiement_prevue"]');
+            const datePaiementConvenueInput = row.querySelector('input[name$="-date_paiement_convenue"]');
+            const datePaiementPrevueSecteurInput = row.querySelector('input[name$="-date_paiement_prevue_secteur"]');
+            const montantNonPayeInput = row.querySelector('input[name$="-montant_non_paye"]');
+            const montantPayeHorsDelaiInput = row.querySelector('input[name$="-montant_paye_hors_delai"]');
+            const datePaiementHorsDelaiInput = row.querySelector('input[name$="-date_paiement_hors_delai"]');
+            const moisRetardInput = row.querySelector('input[name$="-nombre_mois_retard"]');
+            const amendeInput = row.querySelector('input[name$="-amende"]');
 
-        // Calcul de l'amende
-        let amende = 0;
-        if (monthsDifference > 0 && baseAmount > 0) {
-            const bankRate = parseFloat(tauxDirecteurInput.value) / 100 || 0;
+            if (!moisRetardInput || !amendeInput) return;
+
+            let startDate = null;
+            if (datePaiementPrevueInput && datePaiementPrevueInput.value) startDate = new Date(datePaiementPrevueInput.value);
+            else if (datePaiementConvenueInput && datePaiementConvenueInput.value) startDate = new Date(datePaiementConvenueInput.value);
+            else if (datePaiementPrevueSecteurInput && datePaiementPrevueSecteurInput.value) startDate = new Date(datePaiementPrevueSecteurInput.value);
+
+            const montantNonPaye = parseFloat(montantNonPayeInput.value) || 0;
+            const montantPayeHorsDelai = parseFloat(montantPayeHorsDelaiInput.value) || 0;
             
-            // Premier mois
-            amende += baseAmount * bankRate;
-            
-            // Mois suivants
-            if (monthsDifference > 1) {
-                amende += baseAmount * ADDITIONAL_RATE * (monthsDifference - 1);
+            let endDate = null;
+            let monthsDifference = 0;
+            let baseAmount = 0;
+
+            if (montantNonPaye > 0) {
+                endDate = getQuarterEndDate(year, quarter);
+                monthsDifference = calculateMonthDifference(startDate, endDate);
+                baseAmount = montantNonPaye;
+            } else if (montantPayeHorsDelai > 0 && datePaiementHorsDelaiInput.value) {
+                endDate = new Date(datePaiementHorsDelaiInput.value);
+                if (startDate && endDate && startDate.getTime() === endDate.getTime()) {
+                    monthsDifference = 0;
+                } else {
+                    monthsDifference = calculateMonthDifference(startDate, endDate);
+                }
+                baseAmount = montantPayeHorsDelai;
             }
+            
+            moisRetardInput.value = monthsDifference > 0 ? monthsDifference : '';
+
+            let amende = 0;
+            if (monthsDifference > 0 && baseAmount > 0) {
+                const bankRate = parseFloat(tauxDirecteurInput.value) / 100 || 0;
+                amende += baseAmount * bankRate;
+                if (monthsDifference > 1) {
+                    amende += baseAmount * ADDITIONAL_RATE * (monthsDifference - 1);
+                }
+            }
+            
+            amendeInput.value = amende > 0 ? amende.toFixed(2) : '';
+            updateTotalAmende();
         }
-        
-        amendeInput.value = amende > 0 ? amende.toFixed(2) : '';
+
+        function updateTotalAmende() {
+            let total = 0;
+            document.querySelectorAll('#facture-table input[name$="-amende"]').forEach(input => {
+                total += parseFloat(input.value) || 0;
+            });
+            totalAmendeEl.textContent = `${total.toFixed(2)} MAD`;
+        }
+
+        tableEl.addEventListener('input', function(event) {
+            const target = event.target;
+            if (target && target.closest('.factures-formset')) {
+                updateRowCalculations(target.closest('.factures-formset'));
+            }
+        });
+
+        if (tauxDirecteurInput) {
+            tauxDirecteurInput.addEventListener('input', function() {
+                document.querySelectorAll('.factures-formset').forEach(row => updateRowCalculations(row));
+            });
+        }
+
+        document.querySelectorAll('.factures-formset').forEach(row => updateRowCalculations(row));
+        updateTotalAmende();
+    }
+    
+    // --- Error Modal Logic ---
+    const errorModal = document.getElementById('error-modal');
+    const openFacturesErrorBtn = document.getElementById('open-error-modal-btn');
+    const openReleveErrorBtn = document.getElementById('open-releve-error-modal-btn');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const errorListDiv = document.getElementById('error-list');
+
+    const releveFieldLabels = {
+        'mois': "Mois", 'numero_facture': "N° Facture", 'date_facture': "Date Facture",
+        'designation': "Désignation", 'nom_fournisseur': "Nom Fournisseur", 'if_fournisseur': "IF Fournisseur",
+        'ice_fournisseur': "ICE Fournisseur", 'montant_ht': "Montant HT", 'code_tva': "Code TVA",
+        'montant_tva': "Montant TVA", 'montant_ttc': "Montant TTC", 'mode_paiement': "Mode Paiement",
+        'date_paiement': "Date Paiement", 'prorata': "Prorata", 'nombre_jours': "Nombre de Jours"
+    };
+
+    function openErrorModal(errorsDataId, nonFormErrorsDataId, fieldLabels) {
+        errorListDiv.innerHTML = '';
+        const errorsDataEl = document.getElementById(errorsDataId);
+        const nonFormErrorsDataEl = document.getElementById(nonFormErrorsDataId);
+        const errorsData = errorsDataEl ? JSON.parse(errorsDataEl.textContent) : [];
+        const nonFormErrorsData = nonFormErrorsDataEl ? JSON.parse(nonFormErrorsDataEl.textContent) : [];
+
+        let html = '<ul class="list-disc list-inside space-y-2">';
+        if (nonFormErrorsData.length > 0) {
+            html += `<li><strong class="font-semibold">Erreurs générales:</strong><ul>`;
+            nonFormErrorsData.forEach(error => { html += `<li class="ml-4">${error}</li>`; });
+            html += '</ul></li>';
+        }
+        errorsData.forEach((formErrors, index) => {
+            if (formErrors && Object.keys(formErrors).length > 0) {
+                html += `<li><strong class="font-semibold">Ligne ${index + 1}:</strong><ul>`;
+                for (const [field, errorMessages] of Object.entries(formErrors)) {
+                    let fieldLabel = field;
+                    if (typeof fieldLabels === 'object') {
+                        fieldLabel = fieldLabels[field] || field;
+                    } else if (typeof fieldLabels === 'string') {
+                        fieldLabel = document.querySelector(`${fieldLabels}[aria-label="${field}"]`)?.textContent || field;
+                    }
+                    const messages = Array.isArray(errorMessages) ? errorMessages.join(', ') : errorMessages;
+                    html += `<li class="ml-4">${fieldLabel}: ${messages}</li>`;
+                }
+                html += '</ul></li>';
+            }
+        });
+        html += '</ul>';
+        errorListDiv.innerHTML = html;
+        errorModal.style.display = 'block';
     }
 
-    // Attacher les écouteurs d'événements
-    table.addEventListener('input', function(event) {
-        const target = event.target;
-        if (target && target.closest('.facture-formset')) {
-            const row = target.closest('.facture-formset');
-            updateCalculations(row);
-        }
+    if (openFacturesErrorBtn) {
+        openFacturesErrorBtn.addEventListener('click', () => {
+            openErrorModal('formset-errors-data', 'formset-non-form-errors-data', 'th');
+        });
+    }
+
+    if (openReleveErrorBtn) {
+        openReleveErrorBtn.addEventListener('click', () => {
+            openErrorModal('releve-formset-errors-data', 'releve-formset-non-form-errors-data', releveFieldLabels);
+        });
+    }
+
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => { errorModal.style.display = 'none'; });
+    }
+    window.addEventListener('click', (event) => {
+        if (event.target == errorModal) { errorModal.style.display = 'none'; }
     });
 
-    // Écouteur pour le champ Taux Directeur
-    if (tauxDirecteurInput) {
-        tauxDirecteurInput.addEventListener('input', function() {
-            document.querySelectorAll('.facture-formset').forEach(row => {
-                updateCalculations(row);
+    // --- Factures Table Init ---
+    var tableFactures = $('#facture-table').DataTable({
+        dom: 'Bfrtip',
+        buttons: [
+            { extend: 'excelHtml5', text: 'Excel', exportOptions: { columns: ':not(.no-export)', format: { body: function ( data, row, column, node ) { var child = node.querySelector('input, select'); return child ? child.value : data; } } } },
+            { extend: 'copyHtml5', text: 'Copier', exportOptions: { columns: ':not(.no-export)', format: { body: function ( data, row, column, node ) { var child = node.querySelector('input, select'); return child ? child.value : data; } } } }
+        ],
+        "pageLength": 10,
+        "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json" }
+    });
+    const addFactureRow = setupFormset('factures', 'facture-table', 'add-form', 'empty-form-template', '.delete-row-btn', tableFactures);
+    setupExcelImport('import-button', 'excel-importer', 'facture-table', 'factures', addFactureRow, {
+        'fournisseur_if': ["N° D'IF", "N° IF"], 'fournisseur_ice': ["N° D'ICE", "N° ICE"], 'fournisseur_raison_sociale': ["RAISON SOCIALE", "NOMETPRÉNOMOURAISONSOCIALE"], 'fournisseur_rc': ["N° RC"], 'fournisseur_adresse': ["ADRESSE", "ADRESSE SIÈGE SOCIAL"], 'fournisseur_ville_rc': ["VILLE DU RC"], 'numero_facture': ["N° DE FACTURE", "N° FACT"], 'date_emission_facture': ["DATE D'ÉMISSION", "DATE D’ÉMISSION", "DATE DEMISSION", "DATE FACT"], 'nature_prestation': ["NATURE PRESTATION", "NATURE DES MARCHANDISES LIVRÉES, DES TRAVAUX EXÉCUTÉS OU DES SERVICES RENDUS", "DESIGNAT M/SES"], 'date_livraison': ["DATE LIVRAISON", "DATE DE LIVRAISON DES MARCHANDISES, DE L’EXÉCUTION DES TRAVAUX OU DE LA PRESTATION DES SERVICES"], 'mois_transaction': ["MOIS (TRANSACTIONS D’UNE PÉRIODICITÉ NE DÉPASSANT PAS UN MOIS)", "MOIS"], 'annee_transaction': ["ANNÉE (TRANSACTIONS D’UNE PÉRIODICITÉ NE DÉPASSANT PAS UN MOIS)2", "ANNÉE"],
+        'date_constatation_service': ["DATE DE LA CONSTATATION DU SERVICE FAIT POUR LES ÉTABLISSEMENTS PUBLICS", "DATE CONSTATATION SERVICE"],
+        'date_paiement_prevue': ["DATE PRÉVUE POUR LE PAIEMENT DE LA FACTURE", "DATE PAIEMENT PRÉVUE"],
+        'date_paiement_convenue': ["DATE CONVENUE POUR LE PAIEMENT DE LA FACTURE", "DATE PAIEMENT CONVENUE"],
+        'delai_paiement_secteur': ["DÉLAI DE PAIEMENT DES FACTURES POUR LE SECTEUR D’ACTIVITÉ(2)", "DELAIS CONVENTION", "DÉLAI PAIEMENT SECTEUR"],
+        'date_paiement_prevue_secteur': ["DATE PRÉVUE POUR LE PAIEMENT DE LA FACTURE SELON LE DÉLAI FIXÉ AU SECTEUR(2)", "DATE PRÉVUE (SECTEUR)"],
+        'montant_ttc': ["MONTANT DE LA FACTURE TTC", "MONTANT TTC"], 'montant_non_paye': ["MONTANT NON ENCORE PAYÉ DE LA FACTURE"],
+        'montant_paye_hors_delai': ["MONTANT PAYÉ TOTALEMENT OU PARTIELLEMENT, HORS DÉLAI AU COURS DE LA PÉRIODE OBJET DE LA DÉCLARATION"],
+        'date_paiement_hors_delai': ["DATE DU PAIEMENT TOTAL OU PARTIEL, HORS DÉLAI", "DATE EFFECTIVE DE PAIEMENT", "DATE PAIEMENT HORS DÉLAI"],
+        'mode_paiement': ["MODE DE PAIEMENT", "MODE PAIE"],
+        'reference_paiement': ["RÉFÉRENCES DU PAIEMENT", "REF. PAIEMENT", "REF PAIEMENT"],
+        'montant_objet_litige': ["MONTANT OBJET DE LITIGES SOUMIS À LA JUSTICE(3)", "MONTANT EN LITIGE"],
+        'date_recours_judiciaire': ["DATE DU RECOURS JUDICIAIRE(3)", "DATE RECOURS JUDICIAIRE"],
+        'montant_du_apres_jugement': ["MONTANT DÛ APRÈS JUGEMENT(3)", "MONTANT DÛ (JUGEMENT)"],
+        'date_jugement_definitif': ["DATE DU JUGEMENT DÉFINITIF(3)", "DATE JUGEMENT DÉFINITIF"],
+        'mois_suspension_amende': ["NOMBRE DE MOIS AYANT FAIT L'OBJET DE SUSPENSION D'APPLICATION DE L'AMENDE PÉCUNIAIRE", "NOMBRE MOIS DE SUSPENSION PÉNALITÉS"]
+    }, "RAISON SOCIALE");
+    setupCalculations('facture-table');
+
+    // --- Relevé Calculations Logic ---
+    function setupReleveCalculations(tableId) {
+        const tableEl = document.getElementById(tableId);
+
+        function updateReleveRowCalculations(row) {
+            const dateFactureInput = row.querySelector('input[name$="-date_facture"]');
+            const datePaiementInput = row.querySelector('input[name$="-date_paiement"]');
+            const nombreJoursInput = row.querySelector('input[name$="-nombre_jours"]');
+
+            if (!dateFactureInput || !datePaiementInput || !nombreJoursInput) return;
+
+            const startDate = dateFactureInput.value ? new Date(dateFactureInput.value) : null;
+            const endDate = datePaiementInput.value ? new Date(datePaiementInput.value) : null;
+
+            const daysDifference = calculateDayDifference(startDate, endDate);
+            nombreJoursInput.value = (daysDifference === '' ? '' : daysDifference);
+        }
+
+        tableEl.addEventListener('input', function(event) {
+            const target = event.target;
+            if (target && target.closest('.releves-formset')) {
+                updateReleveRowCalculations(target.closest('.releves-formset'));
+            }
+        });
+
+        document.querySelectorAll('.releves-formset').forEach(row => updateReleveRowCalculations(row));
+    }
+
+    // --- Relevé Table Init ---
+    var tableReleve = $('#releve-table').DataTable({
+        dom: 'Bfrtip',
+        buttons: [
+            { extend: 'excelHtml5', text: 'Excel', exportOptions: { columns: ':not(.no-export)', format: { body: function ( data, row, column, node ) { var child = node.querySelector('input, select'); return child ? child.value : data; } } } },
+            { extend: 'copyHtml5', text: 'Copier', exportOptions: { columns: ':not(.no-export)', format: { body: function ( data, row, column, node ) { var child = node.querySelector('input, select'); return child ? child.value : data; } } } }
+        ],
+        "pageLength": 10,
+        "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json" }
+    });
+    const addReleveRow = setupFormset('releves', 'releve-table', 'add-releve-form', 'empty-releve-form-template', '.delete-releve-row-btn', tableReleve);
+    // Ré-attache les listeners si l'onglet était initialisé avant
+    document.getElementById('add-releve-form')?.addEventListener('click', () => {});
+
+    setupExcelImport('import-releve-button', 'releve-excel-importer', 'releve-table', 'releves', addReleveRow, {
+        'mois': ["MOIS"],
+        'numero_facture': ["N° FACTURE"],
+        'date_facture': ["DATE FACTURE"],
+        'designation': ["DESIGNATION"],
+        'nom_fournisseur': ["NOM FOURNISSEUR"],
+        'if_fournisseur': ["IF FOURNISSEUR"],
+        'ice_fournisseur': ["ICE FOURNISSEUR"],
+        'montant_ht': ["MONTANT HT"],
+        'code_tva': "CODE TVA",
+        'montant_tva': ["MONTANT TVA"],
+        'montant_ttc': ["MONTANT TTC"],
+        'mode_paiement': ["MODE PAIEMENT"],
+        'date_paiement': ["DATE PAIEMENT"],
+        'prorata': ["PRORATA"],
+        'nombre_jours': ["NOMBRE DE JOURS"]
+    }, "NOM FOURNISSEUR");
+    setupReleveCalculations('releve-table');
+
+    // --- Export Relevé Filtré (61-120 jours / >120 jours) ---
+    function exportReleveFiltered(mode) {
+        // mode: '61_120' ou 'gt_120'
+        const rows = Array.from(document.querySelectorAll('#releve-table tbody tr'));
+        const headerCells = Array.from(document.querySelectorAll('#releve-table thead tr:last-child th'));
+        const headers = headerCells.slice(0, headerCells.length - 1).map(th => th.textContent.trim()); // exclut Suppr.
+        const data = [headers];
+        rows.forEach(tr => {
+            const del = tr.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            if (del && del.checked) return; // ignoré si marqué supprimé
+            const joursInput = tr.querySelector('input[name$="-nombre_jours"]');
+            if (!joursInput) return;
+            const val = parseInt(joursInput.value, 10);
+            if (isNaN(val)) return;
+            let ok = false;
+            if (mode === '61_120') ok = (val >= 61 && val <= 120);
+            else if (mode === 'gt_120') ok = (val > 120);
+            if (!ok) return;
+            const cells = [];
+            const tds = Array.from(tr.querySelectorAll('td')).slice(0, headerCells.length - 1);
+            tds.forEach(td => {
+                const input = td.querySelector('input, select');
+                if (input) {
+                    if (input.tagName === 'SELECT') {
+                        const opt = input.options[input.selectedIndex];
+                        cells.push(opt ? opt.text.trim() : '');
+                    } else {
+                        cells.push(input.value || '');
+                    }
+                } else {
+                    cells.push(td.textContent.trim());
+                }
+            });
+            data.push(cells);
+        });
+        if (data.length === 1) { alert('Aucune ligne trouvée pour ce filtre.'); return; }
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'ReleveFiltre');
+        const stamp = new Date().toISOString().split('T')[0];
+        const suffix = mode === '61_120' ? '61_120' : 'plus_120';
+        XLSX.writeFile(wb, `releve_${suffix}_${stamp}.xlsx`);
+    }
+    document.getElementById('export-releve-61-120')?.addEventListener('click', () => exportReleveFiltered('61_120'));
+    document.getElementById('export-releve-gt-120')?.addEventListener('click', () => exportReleveFiltered('gt_120'));
+
+    // --- Suppression globale Relevé ---
+    const deleteAllRelevesBtn = document.getElementById('delete-all-releves');
+    if (deleteAllRelevesBtn) {
+        deleteAllRelevesBtn.addEventListener('click', () => {
+            if (!confirm('Confirmer la suppression de toutes les lignes du relevé ?')) return;
+            document.querySelectorAll('#releve-table tbody tr').forEach(tr => {
+                const delCheckbox = tr.querySelector('input[type="checkbox"][name$="-DELETE"]');
+                if (delCheckbox) {
+                    delCheckbox.checked = true;
+                    tr.style.display = 'none';
+                }
             });
         });
     }
 
-    // Calculer pour les lignes existantes au chargement de la page
-    document.querySelectorAll('.facture-formset').forEach(row => {
-        updateCalculations(row);
-    });
+    // --- Suppression globale Factures ---
+    const deleteAllFacturesBtn = document.getElementById('delete-all-factures');
+    if (deleteAllFacturesBtn) {
+        deleteAllFacturesBtn.addEventListener('click', () => {
+            if (!confirm('Confirmer la suppression de toutes les lignes des factures détaillées ?')) return;
+            document.querySelectorAll('#facture-table tbody tr').forEach(tr => {
+                const delCheckbox = tr.querySelector('input[type="checkbox"][name$="-DELETE"]');
+                if (delCheckbox) {
+                    delCheckbox.checked = true;
+                    tr.style.display = 'none';
+                }
+            });
+        });
+    }
+
 });
 </script>
 {% endblock %}

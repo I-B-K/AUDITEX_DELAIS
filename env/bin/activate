@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/Users/ibk/Documents/GitHub/declaration_project/env"
+VIRTUAL_ENV="/Users/ibk/Documents/GitHub/AUDITEX_DELAIS/env"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

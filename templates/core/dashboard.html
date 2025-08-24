@@ -24,6 +24,16 @@
         </div>
     </div>
     <div class="bg-white p-6 rounded-xl shadow-md flex items-center">
+        <div class="bg-orange-100 p-3 rounded-full">
+            <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
+        </div>
+        <div class="ml-4">
+            <p class="text-sm text-gray-500">Déclarations Brouillon</p>
+            <p class="text-2xl font-bold text-gray-800">{{ declarations_draft_count }}</p>
+        </div>
+    </div>
+    {% if user.is_superuser %}
+    <div class="bg-white p-6 rounded-xl shadow-md flex items-center">
         <div class="bg-yellow-100 p-3 rounded-full">
             <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-2a6 6 0 00-6-6H6a6 6 0 00-6 6v2h9z"></path></svg>
         </div>
@@ -32,6 +42,7 @@
             <p class="text-2xl font-bold text-gray-800">{{ total_collaborators }}</p>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <div class="mt-8 bg-white p-6 rounded-xl shadow-md">

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Validation d'inscription{% endblock %}
+{% block page_title %}Validation d'inscription{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-xl shadow-md">
+    <h3 class="text-lg font-semibold text-gray-800 mb-1">{{ object.user.get_full_name|default:object.user.email }}</h3>
+    <p class="text-sm text-gray-500 mb-4">Inscrit le {{ object.registration_date|date:"d/m/Y H:i" }}</p>
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notes administratives</label>
+            {{ form.admin_notes }}
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Clients à assigner</label>
+            {{ form.clients }}
+            <p class="mt-2 text-xs text-gray-500">Maintenez Ctrl (Windows) ou Cmd (Mac) pour une sélection multiple.</p>
+        </div>
+        <div class="flex space-x-3">
+            <button type="submit" name="action" value="validate" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">Valider</button>
+            <button type="submit" name="action" value="reject" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-gray-50">Rejeter</button>
+            <a href="{% url 'registration_requests' %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

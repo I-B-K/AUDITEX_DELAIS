@@ -1,10 +1,38 @@
 # core/forms.py
 from django import forms
 from django.forms import inlineformset_factory
-from core.models import Declaration, Facture, Client
-from datetime import date
+from core.models import Declaration, Facture, Client, ReleveFacture, UserProfile
+from datetime import date, datetime
+from django.utils import timezone
 from allauth.account.forms import LoginForm
+from django.contrib.auth import get_user_model
 import datetime
+
+class RegistrationValidationForm(forms.ModelForm):
+    clients = forms.ModelMultipleChoiceField(
+        queryset=Client.objects.all(),
+        required=False,
+        widget=forms.SelectMultiple(
+            attrs={'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'}
+        )
+    )
+
+    class Meta:
+        model = UserProfile
+        fields = ['admin_notes']
+        widgets = {
+            'admin_notes': forms.Textarea(
+                attrs={'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'}
+            ),
+        }
+
+    def save(self, commit=True):
+        profile = super().save(commit=False)
+        # Utiliser timezone.now() pour éviter l'erreur AttributeError (et gérer les fuseaux)
+        profile.validation_date = timezone.now()
+        if commit:
+            profile.save()
+        return profile
 
 class CustomLoginForm(LoginForm):
     """Surcharge le formulaire de connexion pour le styliser avec Tailwind."""
@@ -29,7 +57,7 @@ class CustomLoginForm(LoginForm):
 class DeclarationForm(forms.ModelForm):
     """Formulaire pour créer une nouvelle déclaration."""
     client = forms.ModelChoiceField(
-        queryset=Client.objects.all(),
+        queryset=Client.objects.none(), # Le queryset sera défini dans __init__
         label="Client",
         empty_label="--- Sélectionnez un client ---",
         widget=forms.Select(attrs={'class': 'mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md'})
@@ -61,6 +89,12 @@ class DeclarationForm(forms.ModelForm):
             }),
         }
 
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        # On utilise le manager sécurisé pour peupler le queryset du formulaire
+        self.fields['client'].queryset = Client.secure_objects.get_queryset_for_user(user)
+
     def clean(self):
         cleaned_data = super().clean()
         type_declaration = cleaned_data.get("type_declaration")
@@ -85,6 +119,56 @@ class ClientForm(forms.ModelForm):
             'adresse': forms.Textarea(attrs={'class': 'mt-1 block w-full border-gray-300 rounded-md shadow-sm', 'rows': 3}),
         }
 
+class ClientCollaboratorAssignForm(forms.ModelForm):
+    collaborateurs = forms.ModelMultipleChoiceField(
+        queryset=None,
+        required=False,
+        widget=forms.SelectMultiple(attrs={'class': 'mt-1 block w-full border-gray-300 rounded-md shadow-sm h-48'})
+    )
+    class Meta:
+        model = Client
+        fields = ['collaborateurs']
+
+    def __init__(self, *args, **kwargs):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        super().__init__(*args, **kwargs)
+        self.fields['collaborateurs'].queryset = User.objects.all().order_by('username')
+
+class CollaboratorClientAssignForm(forms.Form):
+    """Formulaire inverse : assigner plusieurs clients à un collaborateur donné."""
+    clients = forms.ModelMultipleChoiceField(
+        queryset=Client.objects.all().order_by('raison_sociale'),
+        required=False,
+        widget=forms.SelectMultiple(attrs={
+            'class': 'mt-1 block w-full border-gray-300 rounded-md shadow-sm h-64'
+        }),
+        label="Clients assignés"
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.collaborator = kwargs.pop('collaborator', None)
+        super().__init__(*args, **kwargs)
+        if self.collaborator:
+            # Initial : clients déjà liés
+            self.initial['clients'] = Client.objects.filter(collaborateurs=self.collaborator).values_list('pk', flat=True)
+
+class DeclarationUpdateForm(forms.ModelForm):
+    """Formulaire pour la mise à jour des informations générales d'une déclaration."""
+    class Meta:
+        model = Declaration
+        fields = ['chiffre_affaires_n1', 'taux_directeur']
+        widgets = {
+            'chiffre_affaires_n1': forms.NumberInput(attrs={
+                'class': 'mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm',
+                'placeholder': "Montant en MAD"
+            }),
+            'taux_directeur': forms.NumberInput(attrs={
+                'class': 'mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm',
+                'placeholder': "Ex: 3.00"
+            }),
+        }
+
 class FactureForm(forms.ModelForm):
     """Formulaire pour une seule facture, avec tous les champs."""
     
@@ -98,11 +182,11 @@ class FactureForm(forms.ModelForm):
 
     mois_transaction = forms.TypedChoiceField(
         choices=MONTH_CHOICES, coerce=int, empty_value=None, required=False,
-        widget=forms.Select(attrs={'class': 'w-full border-none rounded p-1 bg-transparent focus:ring-0 text-xs'})
+        widget=forms.Select(attrs={'class': 'w-full border-none rounded p-1 bg-transparent focus:ring-0 text-sm'})
     )
     annee_transaction = forms.TypedChoiceField(
         choices=YEAR_CHOICES, coerce=int, empty_value=None, required=False,
-        widget=forms.Select(attrs={'class': 'w-full border-none rounded p-1 bg-transparent focus:ring-0 text-xs'})
+        widget=forms.Select(attrs={'class': 'w-full border-none rounded p-1 bg-transparent focus:ring-0 text-sm'})
     )
     
     def __init__(self, *args, **kwargs):
@@ -228,8 +312,8 @@ class FactureForm(forms.ModelForm):
         model = Facture
         exclude = ('declaration',)
         
-        input_class = 'w-full border-none rounded p-1 bg-transparent focus:ring-0 text-xs'
-        select_class = 'w-full border-none rounded p-1 bg-transparent focus:ring-0 text-xs'
+        input_class = 'w-full border-none rounded p-1 bg-transparent focus:ring-0 text-sm'
+        select_class = 'w-full border-none rounded p-1 bg-transparent focus:ring-0 text-sm'
         date_attrs = {'type': 'date', 'class': input_class}
         widgets = {
             'fournisseur_if': forms.TextInput(attrs={'class': input_class}),
@@ -265,16 +349,64 @@ class FactureForm(forms.ModelForm):
 class BaseFactureFormSet(forms.BaseInlineFormSet):
     def clean(self):
         super().clean()
-        for i, form in enumerate(self.forms):
-            if i >= self.initial_form_count() and not form.has_changed():
-                form._errors = {}
-
+        for form in self.forms:
+            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                # Vous pouvez ajouter ici une validation qui dépend de plusieurs formulaires
+                pass
 
 FactureFormSet = inlineformset_factory(
     Declaration,
     Facture,
     form=FactureForm,
     formset=BaseFactureFormSet,
+    extra=0,
+    can_delete=True,
+    can_delete_extra=True
+)
+
+class ReleveFactureForm(forms.ModelForm):
+    """Formulaire pour une seule ligne de relevé de facture."""
+    
+    MONTH_CHOICES = [
+        ('', '---'), (1, 'Janvier'), (2, 'Février'), (3, 'Mars'), (4, 'Avril'),
+        (5, 'Mai'), (6, 'Juin'), (7, 'Juillet'), (8, 'Août'),
+        (9, 'Septembre'), (10, 'Octobre'), (11, 'Novembre'), (12, 'Décembre')
+    ]
+    
+    mois = forms.TypedChoiceField(
+        choices=MONTH_CHOICES, coerce=int, empty_value=None, required=False,
+        widget=forms.Select(attrs={'class': 'w-full border-none rounded p-1 bg-transparent focus:ring-0 text-sm'})
+    )
+
+    class Meta:
+        model = ReleveFacture
+        exclude = ('declaration',)
+        
+        input_class = 'w-full border-none rounded p-1 bg-transparent focus:ring-0 text-sm'
+        select_class = 'w-full border-none rounded p-1 bg-transparent focus:ring-0 text-sm'
+        date_attrs = {'type': 'date', 'class': input_class}
+        
+        widgets = {
+            'numero_facture': forms.TextInput(attrs={'class': input_class}),
+            'date_facture': forms.DateInput(attrs=date_attrs, format='%Y-%m-%d'),
+            'designation': forms.TextInput(attrs={'class': input_class}),
+            'nom_fournisseur': forms.TextInput(attrs={'class': input_class}),
+            'if_fournisseur': forms.TextInput(attrs={'class': input_class}),
+            'ice_fournisseur': forms.TextInput(attrs={'class': input_class}),
+            'montant_ht': forms.NumberInput(attrs={'class': f'{input_class} text-right'}),
+            'code_tva': forms.NumberInput(attrs={'class': f'{input_class} text-center'}),
+            'montant_tva': forms.NumberInput(attrs={'class': f'{input_class} text-right'}),
+            'montant_ttc': forms.NumberInput(attrs={'class': f'{input_class} text-right'}),
+            'mode_paiement': forms.Select(attrs={'class': select_class}),
+            'date_paiement': forms.DateInput(attrs=date_attrs, format='%Y-%m-%d'),
+            'prorata': forms.NumberInput(attrs={'class': f'{input_class} text-right'}),
+            'nombre_jours': forms.NumberInput(attrs={'class': f'{input_class} text-center'}),
+        }
+
+ReleveFactureFormSet = inlineformset_factory(
+    Declaration,
+    ReleveFacture,
+    form=ReleveFactureForm,
     extra=0,
     can_delete=True,
     can_delete_extra=True

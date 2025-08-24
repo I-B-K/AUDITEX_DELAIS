@@ -1,8 +1,7 @@
-#!/Users/ibk/Documents/GitHub/declaration_project/env/bin/python3
-# -*- coding: utf-8 -*-
-import re
+#!/Users/ibk/Documents/GitHub/AUDITEX_DELAIS/env/bin/python3
 import sys
-from charset_normalizer import cli
+from charset_normalizer.cli import cli_detect
 if __name__ == '__main__':
-    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
-    sys.exit(cli.cli_detect())
+    if sys.argv[0].endswith('.exe'):
+        sys.argv[0] = sys.argv[0][:-4]
+    sys.exit(cli_detect())

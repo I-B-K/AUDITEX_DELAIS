@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: '${MYSQL_DATABASE}'
+      MYSQL_USER: '${MYSQL_USER}'
+      MYSQL_PASSWORD: '${MYSQL_PASSWORD}'
+      MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASSWORD}'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      # Port exposé sur l'hôte : port dans le conteneur
+      - "3307:3306"
+    networks:
+      - app-network
+
+  web:
+    build: .
+    container_name: django_web
+    restart: always
+    command: gunicorn delais_paiements.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - static_volume:/app/static
+    expose:
+      - 8000
+    depends_on:
+      - db
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
+      - DB_HOST=db
+      - DB_NAME=${MYSQL_DATABASE}
+      - DB_USER=${MYSQL_USER}
+      - DB_PASS=${MYSQL_PASSWORD}
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:1.21.3-alpine
+    container_name: nginx_server
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - static_volume:/app/static
+    depends_on:
+      - web
+    networks:
+      - app-network
+
+volumes:
+  mysql_data:
+  static_volume:
+
+networks:
+  app-network:
+    driver: bridge

@@ -6,7 +6,7 @@
     <title>{% block title %} Auditex - Delais {% endblock %} </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
+        <style>
         body { font-family: 'Inter', sans-serif; }
         /* Custom scrollbar for tables */
         .table-container::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -16,6 +16,8 @@
         /* Style for empty formset row */
         .empty-form { display: none; }
     </style>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
 </head>
 <body class="h-full">
     {% if user.is_authenticated %}
@@ -39,9 +41,17 @@
                     <a href="{% url 'client_list' %}" class="nav-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-md {% if 'client' in request.resolver_match.url_name %}bg-gray-200 text-gray-800 font-semibold{% endif %}">
                         Clients
                     </a>
+                    {% if user.is_superuser %}
                     <a href="{% url 'collaborator_list' %}" class="nav-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-md {% if request.resolver_match.url_name == 'collaborator_list' %}bg-gray-200 text-gray-800 font-semibold{% endif %}">
                         Collaborateurs
                     </a>
+                    <a href="{% url 'registration_requests' %}" class="nav-link flex items-center px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-md {% if request.resolver_match.url_name == 'registration_requests' %}bg-gray-200 text-gray-800 font-semibold{% endif %}">
+                        Demandes d'inscription
+                        {% if pending_registrations_count and pending_registrations_count > 0 %}
+                        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">{{ pending_registrations_count }}</span>
+                        {% endif %}
+                    </a>
+                    {% endif %}
                 </nav>
             </div>
              <div class="p-4 border-t">
@@ -83,6 +93,15 @@
     {% endif %}
 
     <script src="//unpkg.com/alpinejs" defer></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

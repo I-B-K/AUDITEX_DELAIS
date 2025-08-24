@@ -30,7 +30,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV "/Users/ibk/Documents/GitHub/declaration_project/env"
+set -gx VIRTUAL_ENV "/Users/ibk/Documents/GitHub/AUDITEX_DELAIS/env"
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/bin" $PATH

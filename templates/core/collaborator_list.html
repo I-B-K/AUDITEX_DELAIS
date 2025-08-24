@@ -7,20 +7,39 @@
 <div class="bg-white p-6 rounded-xl shadow-md">
     <h3 class="text-lg font-semibold text-gray-800 mb-4">Liste des Collaborateurs</h3>
     <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table id="collaborator-table" class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom d'utilisateur / Email</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom Complet</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date d'inscription</th>
+                    {% if request.user.is_staff %}
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clients Assignés</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 {% for user in collaborators %}
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ user.email }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.get_full_name|default:"Non renseigné" }}</td>
+                <tr {% if request.user.is_staff %}class="cursor-pointer hover:bg-indigo-50" data-assign-url="{% url 'collaborator_client_assign' user.id %}"{% endif %}>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {% if request.user.is_staff %}
+                        <a href="{% url 'collaborator_client_assign' user.id %}" class="text-indigo-600 hover:underline">{{ user.email }}</a>
+                        {% else %}{{ user.email }}{% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {% if request.user.is_staff %}
+                        <a href="{% url 'collaborator_client_assign' user.id %}" class="text-indigo-600 hover:underline">{{ user.get_full_name|default:"Non renseigné" }}</a>
+                        {% else %}{{ user.get_full_name|default:"Non renseigné" }}{% endif %}
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.date_joined|date:"d/m/Y" }}</td>
+                    {% if request.user.is_staff %}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.clients_assignes.count }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 space-x-3">
+                        <a href="{% url 'client_list' %}?collab={{ user.id }}" class="hover:underline">Voir Clients</a>
+                        <a href="{% url 'collaborator_client_assign' user.id %}" class="hover:underline">Assigner</a>
+                    </td>
+                    {% endif %}
                 </tr>
                 {% empty %}
                 <tr>
@@ -31,4 +50,33 @@
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    const table = $('#collaborator-table').DataTable({
+        dom: 'Bfrtip',
+        buttons: [
+            { extend: 'copy', text: 'Copier' },
+            { extend: 'csv', text: 'CSV' },
+            { extend: 'excel', text: 'Excel' },
+            { extend: 'pdf', text: 'PDF' },
+            { extend: 'print', text: 'Imprimer' }
+        ],
+        "pageLength": 10,
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json"
+        }
+    });
+    // Ligne cliquable (admin seulement)
+    {% if request.user.is_staff %}
+    $('#collaborator-table tbody').on('click', 'tr', function(e){
+        if($(e.target).is('a, button, input')) return; // éviter conflits
+        const url = $(this).data('assign-url');
+        if(url){ window.location = url; }
+    });
+    {% endif %}
+});
+</script>
 {% endblock %}

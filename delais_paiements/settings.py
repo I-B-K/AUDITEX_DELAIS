@@ -7,12 +7,13 @@ pymysql.install_as_MySQLdb()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-remplacez-moi-avec-une-vraie-cle-secrete'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-remplacez-moi-avec-une-vraie-cle-secrete')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# La valeur 'False' en production est gérée via le .env
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -63,6 +64,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.pending_registrations_count',
             ],
         },
     },
@@ -71,15 +73,15 @@ TEMPLATES = [
 WSGI_APPLICATION = 'delais_paiements.wsgi.application'
 
 
-# --- CONFIGURATION DE LA BASE DE DONNÉES MYSQL ---
+# --- CONFIGURATION DE LA BASE DE DONNÉES (via variables d'environnement) ---
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'delais',       # Le nom de votre base de données
-        'USER': 'IBK',                 # Votre utilisateur MySQL (souvent 'root' en local)
-        'PASSWORD': 'Masteribk2019++',    # Votre mot de passe MySQL
-        'HOST': '127.0.0.1',            # 'localhost' ou '127.0.0.1'
-        'PORT': '3306',
+        'NAME': os.environ.get('DB_NAME', 'delais'),
+        'USER': os.environ.get('DB_USER', 'IBK'),
+        'PASSWORD': os.environ.get('DB_PASS', 'Masteribk2019++'),
+        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+        'PORT': os.environ.get('DB_PORT', '3306'),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
@@ -139,6 +141,7 @@ SOCIALACCOUNT_PROVIDERS = {
         ],
         'AUTH_PARAMS': {
             'access_type': 'online',
+            'prompt': 'select_account',
         }
     }
 }

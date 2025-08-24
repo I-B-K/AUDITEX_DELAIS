@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load i18n socialaccount %}
+
+{% block title %}Connexion Google | {{ block.super }}{% endblock %}
+
+{# Utilise le bloc pour visiteurs non authentifiés sinon base.html ne l'affiche pas #}
+{% block content_unauthenticated %}
+<div class="min-h-screen flex items-center justify-center py-10 px-4 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+  <div class="w-full max-w-md">
+    <div class="relative bg-white/80 dark:bg-slate-800/80 backdrop-blur border border-slate-200 dark:border-slate-700 shadow-xl rounded-2xl overflow-hidden">
+      <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.15),transparent_60%)]"></div>
+      <div class="p-8 relative">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="h-12 w-12 rounded-xl flex items-center justify-center bg-white shadow-inner ring-1 ring-slate-200 dark:ring-slate-600">
+            <!-- Google Icon -->
+            <svg class="h-7 w-7" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg"><path fill="#4285f4" d="M533.5 278.4c0-18.5-1.5-37-4.7-55H272v104.2h147.3c-6.4 34.6-26.6 64-56.7 83.5v68h91.3c53.5-49.3 83.6-122.1 83.6-200.7z"/><path fill="#34a853" d="M272 544.3c76.7 0 141.3-25.4 188.4-69.2l-91.3-68c-25.4 17.2-58 27-97.1 27-74.6 0-137.8-50.2-160.4-117.6H17.1v73.9c46 91.3 140.5 153.9 254.9 153.9z"/><path fill="#fbbc04" d="M111.6 316.5c-11.4-34.6-11.4-72 0-106.6V136H17.1c-36.4 72.4-36.4 157.6 0 230l94.5-49.5z"/><path fill="#ea4335" d="M272 107.7c40.7-.6 79.8 14.7 109.7 42.9l81.7-81.7C412.9 24.5 343.8-.9 272 0 157.6 0 63.1 62.6 17.1 153.9l94.5 73.9C134.2 157.9 197.4 107.7 272 107.7z"/></svg>
+          </div>
+          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Connexion avec Google</h1>
+        </div>
+        <p class="text-slate-600 dark:text-slate-300 text-sm mb-6 leading-relaxed">
+          Vous allez être redirigé vers Google pour vous authentifier de manière sécurisée.
+          Si la redirection ne se lance pas automatiquement, cliquez sur le bouton ci‑dessous.
+        </p>
+        <form method="post" action="" id="provider-login-form" class="space-y-4">
+          {% csrf_token %}
+          <!-- Allauth insère les champs cachés nécessaires -->
+          {% if form %}{{ form.as_p|safe }}{% endif %}
+          <button type="submit" class="group relative w-full inline-flex items-center justify-center gap-3 rounded-xl bg-white border border-slate-300 hover:border-slate-400 text-slate-800 font-medium py-3 px-4 shadow-sm hover:shadow transition dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600 dark:hover:border-slate-500">
+            <span class="absolute inset-0 rounded-xl bg-gradient-to-r from-[#4285F4] via-[#34A853] to-[#FBBC05] opacity-0 group-hover:opacity-10 transition"></span>
+            <svg class="h-5 w-5" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg"><path fill="#4285f4" d="M533.5 278.4c0-18.5-1.5-37-4.7-55H272v104.2h147.3c-6.4 34.6-26.6 64-56.7 83.5v68h91.3c53.5-49.3 83.6-122.1 83.6-200.7z"/><path fill="#34a853" d="M272 544.3c76.7 0 141.3-25.4 188.4-69.2l-91.3-68c-25.4 17.2-58 27-97.1 27-74.6 0-137.8-50.2-160.4-117.6H17.1v73.9c46 91.3 140.5 153.9 254.9 153.9z"/><path fill="#fbbc04" d="M111.6 316.5c-11.4-34.6-11.4-72 0-106.6V136H17.1c-36.4 72.4-36.4 157.6 0 230l94.5-49.5z"/><path fill="#ea4335" d="M272 107.7c40.7-.6 79.8 14.7 109.7 42.9l81.7-81.7C412.9 24.5 343.8-.9 272 0 157.6 0 63.1 62.6 17.1 153.9l94.5 73.9C134.2 157.9 197.4 107.7 272 107.7z"/></svg>
+            <span>Continuer avec Google</span>
+          </button>
+        </form>
+        <div class="mt-6 flex items-center gap-2 text-xs font-medium text-slate-400 dark:text-slate-500">
+          <div class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300/60 dark:via-slate-600/60 to-transparent"></div>
+          <span>OU</span>
+          <div class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300/60 dark:via-slate-600/60 to-transparent"></div>
+        </div>
+        <div class="mt-4 text-center">
+          <a href="{% url 'account_login' %}" class="text-sm font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">Revenir à la page de connexion classique</a>
+        </div>
+      </div>
+      <div class="px-8 pb-6 text-center text-xs text-slate-400 dark:text-slate-500">
+        Sécurité assurée via OAuth 2.0 Google.
+      </div>
+    </div>
+    <div id="auto-redirect" class="mt-6 flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+      <svg class="animate-spin h-4 w-4 text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+      Redirection automatique...
+    </div>
+  </div>
+</div>
+<script>
+  // Soumission automatique si possible
+  window.addEventListener('load', function() {
+    const form = document.getElementById('provider-login-form');
+    if (form) {
+      setTimeout(() => { form.submit(); }, 600); // petit délai pour affichage UI
+    }
+  });
+</script>
+{% endblock %}
