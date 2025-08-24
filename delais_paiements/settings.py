@@ -74,14 +74,23 @@ WSGI_APPLICATION = 'delais_paiements.wsgi.application'
 
 
 # --- CONFIGURATION DE LA BASE DE DONNÉES (via variables d'environnement) ---
+# Fallback intelligent :
+#  - Dans Docker : host par défaut = 'db' (service docker-compose)
+#  - Hors Docker : host par défaut = '127.0.0.1' et si port mappé externe 3307 utilisé, on peut définir DB_PORT=3307 dans .env
+IN_DOCKER = os.environ.get('RUNNING_IN_DOCKER') == '1' or os.path.exists('/.dockerenv')
+DEFAULT_DB_HOST = 'db' if IN_DOCKER else '127.0.0.1'
+DEFAULT_DB_PORT = '3306'
+DB_HOST = os.environ.get('DB_HOST', DEFAULT_DB_HOST)
+DB_PORT = os.environ.get('DB_PORT', DEFAULT_DB_PORT if IN_DOCKER else os.environ.get('DB_PORT', '3307') if DB_HOST in ('127.0.0.1', 'localhost') else DEFAULT_DB_PORT)
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': os.environ.get('DB_NAME', 'delais'),
         'USER': os.environ.get('DB_USER', 'IBK'),
         'PASSWORD': os.environ.get('DB_PASS', 'Masteribk2019++'),
-        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-        'PORT': os.environ.get('DB_PORT', '3306'),
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },

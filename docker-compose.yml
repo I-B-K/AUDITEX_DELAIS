@@ -35,6 +35,7 @@ services:
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+  RUNNING_IN_DOCKER: 1
     networks:
       - app-network
 
