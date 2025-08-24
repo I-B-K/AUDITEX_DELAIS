@@ -5,6 +5,11 @@ services:
     image: mysql:8.0
     container_name: mysql_db
     restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 5s
     environment:
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
@@ -26,7 +31,8 @@ services:
       - .:/app  # Retirer en prod pour image immuable
       - static_volume:/app/staticfiles
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       SECRET_KEY: ${SECRET_KEY}
       DEBUG: ${DEBUG}
