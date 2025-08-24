@@ -8,7 +8,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 
 class UserProfile(models.Model):
-    """Profile utilisateur avec informations supplémentaires."""
+    """Profile utilisateurs avec informations supplémentaires."""
     class StatutChoices(models.TextChoices):
         EN_ATTENTE = 'EN_ATTENTE', 'En attente de validation'
         VALIDE = 'VALIDE', 'Validé'
