@@ -13,7 +13,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-remplacez-moi-avec-un
 # La valeur 'False' en production est gérée via le .env
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-_raw_hosts = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+_raw_hosts = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1', 'http://http://10.211.0.249.nip.io:8080')
 ALLOWED_HOSTS = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
 # Ajout automatique du domaine nip.io correspondant à une IP publique si fourni
 PUBLIC_IP = os.environ.get('PUBLIC_IP')
