@@ -125,22 +125,32 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --- CONFIGURATION DJANGO-ALLAUTH ---
-# --- CONFIGURATION DJANGO-ALLAUTH (MISE À JOUR) ---
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
+# URLs de redirection
+LOGIN_URL = 'account_login'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/'
-ACCOUNT_LOGOUT_ON_GET = True # Permet la déconnexion via une requête GET
 
-# NOUVELLES CONFIGURATIONS RECOMMANDÉES
-ACCOUNT_LOGIN_METHOD = 'email' # 'username' | 'email' | 'username_email'
-ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE = True
+# Configuration de base allauth
+ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 5
+ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 300
+ACCOUNT_LOGOUT_ON_GET = True
+ACCOUNT_USERNAME_MIN_LENGTH = 3
 ACCOUNT_SESSION_REMEMBER = True
+ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE = True
 ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_EMAIL_VERIFICATION = 'none' # Mettez 'mandatory' en production si vous voulez la vérification par email
+
+# Configuration des formulaires
+ACCOUNT_FORMS = {
+    'login': 'core.forms.CustomLoginForm'
+}
 
 
 # Configuration du fournisseur Google
