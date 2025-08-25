@@ -1,33 +1,32 @@
-# Utiliser une image Python officielle comme image de base
-FROM python:3.10-slim
+FROM python:3.9-slim
 
-# Empêcher Python d'écrire des fichiers .pyc
-ENV PYTHONDONTWRITEBYTECODE 1
-# Assurer que la sortie de Python est affichée immédiatement
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    LANG=fr_FR.UTF-8 \
+    LANGUAGE=fr_FR:fr \
+    LC_ALL=fr_FR.UTF-8
 
-# Définir le répertoire de travail dans le conteneur
 WORKDIR /app
 
-# Installer les dépendances système nécessaires pour mysqlclient et netcat
-RUN apt-get update && apt-get install -y build-essential pkg-config default-libmysqlclient-dev netcat-openbsd && rm -rf /var/lib/apt/lists/*
+# Dépendances système (client MariaDB/MySQL + locale + netcat pour le wait)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential default-libmysqlclient-dev default-mysql-client locales netcat-openbsd \
+    && echo "fr_FR.UTF-8 UTF-8" >> /etc/locale.gen \
+    && locale-gen \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copier le fichier des dépendances et les installer
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt ./
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
-# Copier le script d'entrée et le rendre exécutable
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Copier le reste du code de l'application
 COPY . .
 
-# Collecter les fichiers statiques
-RUN python manage.py collectstatic --noinput
+RUN chmod +x entrypoint.sh wait-for-db.sh || true
 
-# Exposer le port sur lequel Gunicorn va tourner
 EXPOSE 8000
 
-# Définir le point d'entrée du conteneur
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["./entrypoint.sh"]
+CMD ["gunicorn", "delais_paiements.wsgi:application", "--bind", "0.0.0.0:8000"]
+
+
