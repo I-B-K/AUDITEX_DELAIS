@@ -1,5 +1,6 @@
 # delais_paiements/settings.py
 import os
+import re
 from pathlib import Path
 import pymysql
 pymysql.install_as_MySQLdb()
@@ -34,6 +35,18 @@ if PUBLIC_IP:
     nip_host = f"{PUBLIC_IP}.nip.io"
     if nip_host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(nip_host)
+
+# Ajout automatique des variantes DNS wildcard (nip.io & sslip.io) pour chaque IP brute présente.
+auto_hosts = []
+for h in ALLOWED_HOSTS:
+    if re.match(r'^(?:\d{1,3}\.){3}\d{1,3}$', h):  # IPv4 simple
+        for suffix in ('.nip.io', '.sslip.io'):
+            candidate = f"{h}{suffix}"
+            if candidate not in ALLOWED_HOSTS and candidate not in auto_hosts:
+                auto_hosts.append(candidate)
+if auto_hosts:
+    ALLOWED_HOSTS.extend(auto_hosts)
+    ALLOWED_HOSTS = sorted(dict.fromkeys(ALLOWED_HOSTS))  # dédup + tri
 
 
 # Application definition
@@ -70,6 +83,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware', # Ajouté pour allauth
     'core.middleware.ForceHTTPSMiddleware',  # Redirection HTTPS optionnelle
+    'core.middleware.HostLoggingMiddleware',  # Diagnostic DisallowedHost
 ]
 
 ROOT_URLCONF = 'delais_paiements.urls'
