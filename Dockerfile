@@ -10,7 +10,7 @@ WORKDIR /app
 
 # Dépendances système (client MariaDB/MySQL + locale + netcat pour le wait)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential default-libmysqlclient-dev default-mysql-client locales netcat-openbsd \
+    && apt-get install -y --no-install-recommends build-essential default-libmysqlclient-dev default-mysql-client locales netcat-openbsd pkg-config libssl-dev \
     && echo "fr_FR.UTF-8 UTF-8" >> /etc/locale.gen \
     && locale-gen \
     && apt-get clean \
