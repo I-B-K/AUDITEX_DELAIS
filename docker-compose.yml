@@ -1,12 +1,14 @@
+version: '3.9'
+
 services:
   db:
     image: mysql:8.0
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: ${DB_NAME:-delais}
-      MYSQL_USER: ${DB_USER:-IBK}
-      MYSQL_PASSWORD: ${DB_PASS:-Masteribk2019++}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpass}
+      - MYSQL_DATABASE=${DB_NAME:-delais}
+      - MYSQL_USER=${DB_USER:-IBK}
+      - MYSQL_PASSWORD=${DB_PASS:-Masteribk2019++}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-rootpass}
     command: ["mysqld","--default-authentication-plugin=mysql_native_password","--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci"]
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 --silent"]
@@ -23,15 +25,15 @@ services:
       db:
         condition: service_healthy
     environment:
-      RUNNING_IN_DOCKER: "1"
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_NAME: ${DB_NAME:-delais}
-      DB_USER: ${DB_USER:-IBK}
-      DB_PASS: ${DB_PASS:-Masteribk2019++}
-      DEBUG: ${DEBUG:-False}
-  ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1,10.211.0.249,10.211.0.249.nip.io}"
-  SECRET_KEY: ${SECRET_KEY:-change-me}
+      - RUNNING_IN_DOCKER=1
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME:-delais}
+      - DB_USER=${DB_USER:-IBK}
+      - DB_PASS=${DB_PASS:-Masteribk2019++}
+      - DEBUG=${DEBUG:-False}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,10.211.0.249,10.211.0.249.nip.io}
+      - SECRET_KEY=${SECRET_KEY:-change-me}
     ports:
       - "8000:8000"
     volumes:
