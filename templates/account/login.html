@@ -24,18 +24,21 @@
           </div>
         {% endif %}
 
-        {% provider_login_url "google" as google_url %}
-        <a href="{{ google_url }}" class="group relative w-full inline-flex items-center justify-center gap-3 rounded-xl bg-white border border-slate-300 hover:border-slate-400 text-slate-800 font-medium py-3 px-4 shadow-sm hover:shadow transition dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600 dark:hover:border-slate-500">
-          <span class="absolute inset-0 rounded-xl bg-gradient-to-r from-[#4285F4] via-[#34A853] to-[#FBBC05] opacity-0 group-hover:opacity-10 transition"></span>
-          <svg class="h-5 w-5" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg"><path fill="#4285f4" d="M533.5 278.4c0-18.5-1.5-37-4.7-55H272v104.2h147.3c-6.4 34.6-26.6 64-56.7 83.5v68h91.3c53.5-49.3 83.6-122.1 83.6-200.7z"/><path fill="#34a853" d="M272 544.3c76.7 0 141.3-25.4 188.4-69.2l-91.3-68c-25.4 17.2-58 27-97.1 27-74.6 0-137.8-50.2-160.4-117.6H17.1v73.9c46 91.3 140.5 153.9 254.9 153.9z"/><path fill="#fbbc04" d="M111.6 316.5c-11.4-34.6-11.4-72 0-106.6V136H17.1c-36.4 72.4-36.4 157.6 0 230l94.5-49.5z"/><path fill="#ea4335" d="M272 107.7c40.7-.6 79.8 14.7 109.7 42.9l81.7-81.7C412.9 24.5 343.8-.9 272 0 157.6 0 63.1 62.6 17.1 153.9l94.5 73.9C134.2 157.9 197.4 107.7 272 107.7z"/></svg>
-          <span>Continuer avec Google</span>
-        </a>
-
-        <div class="mt-6 flex items-center gap-2 text-xs font-medium text-slate-400 dark:text-slate-500">
-          <div class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300/60 dark:via-slate-600/60 to-transparent"></div>
-          <span>OU</span>
-            <div class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300/60 dark:via-slate-600/60 to-transparent"></div>
-        </div>
+        {% if GOOGLE_SOCIALAPP_CONFIGURED %}
+                {% provider_login_url "google" as google_url %}
+                <a href="{{ google_url }}" class="group relative w-full inline-flex items-center justify-center gap-3 rounded-xl bg-white border border-slate-300 hover:border-slate-400 text-slate-800 font-medium py-3 px-4 shadow-sm hover:shadow transition dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600 dark:hover:border-slate-500">
+                  <span class="absolute inset-0 rounded-xl bg-gradient-to-r from-[#4285F4] via-[#34A853] to-[#FBBC05] opacity-0 group-hover:opacity-10 transition"></span>
+                  <svg class="h-5 w-5" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg"><path fill="#4285f4" d="M533.5 278.4c0-18.5-1.5-37-4.7-55H272v104.2h147.3c-6.4 34.6-26.6 64-56.7 83.5v68h91.3c53.5-49.3 83.6-122.1 83.6-200.7z"/><path fill="#34a853" d="M272 544.3c76.7 0 141.3-25.4 188.4-69.2l-91.3-68c-25.4 17.2-58 27-97.1 27-74.6 0-137.8-50.2-160.4-117.6H17.1v73.9c46 91.3 140.5 153.9 254.9 153.9z"/><path fill="#fbbc04" d="M111.6 316.5c-11.4-34.6-11.4-72 0-106.6V136H17.1c-36.4 72.4-36.4 157.6 0 230l94.5-49.5z"/><path fill="#ea4335" d="M272 107.7c40.7-.6 79.8 14.7 109.7 42.9l81.7-81.7C412.9 24.5 343.8-.9 272 0 157.6 0 63.1 62.6 17.1 153.9l94.5 73.9C134.2 157.9 197.4 107.7 272 107.7z"/></svg>
+                  <span>Continuer avec Google</span>
+                </a>
+                <div class="mt-6 flex items-center gap-2 text-xs font-medium text-slate-400 dark:text-slate-500">
+                  <div class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300/60 dark:via-slate-600/60 to-transparent"></div>
+                  <span>OU</span>
+                  <div class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300/60 dark:via-slate-600/60 to-transparent"></div>
+                </div>
+        {% else %}
+                <div class="mb-4 text-xs text-slate-500 dark:text-slate-400">Connexion Google non configurée.</div>
+        {% endif %}
 
         <form method="POST" action="{% url 'account_login' %}" class="mt-6 space-y-5">
           {% csrf_token %}

@@ -49,6 +49,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware', # Ajouté pour allauth
+    'core.middleware.ForceHTTPSMiddleware',  # Redirection HTTPS optionnelle
 ]
 
 ROOT_URLCONF = 'delais_paiements.urls'
@@ -65,6 +66,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.pending_registrations_count',
+                'core.context_processors.socialapps_flags',
             ],
         },
     },
@@ -146,17 +148,18 @@ LOGIN_URL = 'account_login'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/'
 
-# Configuration de base allauth
-ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
-ACCOUNT_EMAIL_REQUIRED = True
+# Configuration de base allauth (API récente sans paramètres dépréciés)
+# Ancien: ACCOUNT_AUTHENTICATION_METHOD, remplacé par ACCOUNT_LOGIN_METHODS
+ACCOUNT_LOGIN_METHODS = {'username', 'email'}
+# Champs d'inscription (suffixe * = requis)
+ACCOUNT_SIGNUP_FIELDS = ['username*', 'email*', 'password1*', 'password2*']
 ACCOUNT_EMAIL_VERIFICATION = 'none'
-ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 5
-ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 300
 ACCOUNT_LOGOUT_ON_GET = True
 ACCOUNT_USERNAME_MIN_LENGTH = 3
 ACCOUNT_SESSION_REMEMBER = True
-ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE = True
 ACCOUNT_UNIQUE_EMAIL = True
+# Rate limiting (remplace LOGIN_ATTEMPTS_LIMIT/TIMEOUT) : 5 tentatives sur 5 min
+ACCOUNT_RATE_LIMITS = { 'login_failed': '5/5m' }
 
 # Configuration des formulaires
 ACCOUNT_FORMS = {
@@ -179,4 +182,17 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 # Pour utiliser le formulaire de connexion personnalisé
 ACCOUNT_FORMS = {'login': 'core.forms.CustomLoginForm'}
+
+# --- Sécurité / reverse proxy ---
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SESSION_COOKIE_SECURE = False  # Mettre True si derrière HTTPS
+CSRF_COOKIE_SECURE = False     # Idem
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+REFERRER_POLICY = 'strict-origin-when-cross-origin'
+CSRF_TRUSTED_ORIGINS = [f"http://{h}" for h in ALLOWED_HOSTS if h] + [f"https://{h}" for h in ALLOWED_HOSTS if h]
+
+# Activer la redirection HTTPS si variable d'environnement FORCE_HTTPS=1
+FORCE_HTTPS = os.environ.get('FORCE_HTTPS') == '1'
 
