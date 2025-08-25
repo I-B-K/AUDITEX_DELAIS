@@ -225,7 +225,19 @@ SESSION_COOKIE_SECURE = False  # Mettre True si derrière HTTPS
 CSRF_COOKIE_SECURE = False     # Idem
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 REFERRER_POLICY = 'strict-origin-when-cross-origin'
-CSRF_TRUSTED_ORIGINS = [f"http://{h}" for h in ALLOWED_HOSTS if h] + [f"https://{h}" for h in ALLOWED_HOSTS if h]
+
+# Port externe (reverse proxy) pour générer des origins avec port si != 80/443
+EXTERNAL_PORT = os.environ.get('EXTERNAL_PORT')
+_csrf = []
+for _h in ALLOWED_HOSTS:
+    if not _h:
+        continue
+    _csrf.append(f"http://{_h}")
+    _csrf.append(f"https://{_h}")
+    if EXTERNAL_PORT and EXTERNAL_PORT not in {'80','443'}:
+        _csrf.append(f"http://{_h}:{EXTERNAL_PORT}")
+        _csrf.append(f"https://{_h}:{EXTERNAL_PORT}")
+CSRF_TRUSTED_ORIGINS = sorted(set(_csrf))
 
 # Activer la redirection HTTPS si variable d'environnement FORCE_HTTPS=1
 FORCE_HTTPS = os.environ.get('FORCE_HTTPS') == '1'
