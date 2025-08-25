@@ -2,26 +2,26 @@ version: '3.8'
 
 services:
   db:
-    image: mysql:8.0-debian
+    image: mariadb:11.4
     container_name: mysql_db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: "Masteribk2019++"
-      MYSQL_DATABASE: "delais"
-      MYSQL_USER: "IBK"
-      MYSQL_PASSWORD: "Masteribk2019++"
-    command: --default-authentication-plugin=mysql_native_password
-            --character-set-server=utf8mb4
-            --collation-server=utf8mb4_unicode_ci
+      MARIADB_ROOT_PASSWORD: "Masteribk2019++"
+      MARIADB_DATABASE: "delais"
+      MARIADB_USER: "IBK"
+      MARIADB_PASSWORD: "Masteribk2019++"
+      MARIADB_AUTO_UPGRADE: "1"
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
       - mysql_data:/var/lib/mysql
     ports:
       - "3307:3306"
     healthcheck:
-      test: ["CMD", "mysql", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD", "-e", "SELECT 1;"]
-      interval: 5s
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      interval: 8s
       timeout: 5s
-      retries: 10
+      retries: 15
+      start_period: 20s
     networks:
       - app-network
 
