@@ -18,7 +18,9 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 - On ajoute les variantes sans port si l'utilisateur a inclus des host:port.
 - Ajout automatique du domaine nip.io si PUBLIC_IP fourni.
 """
-_raw_hosts = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,10.211.0.249,10.211.0.249.nip.io,211.0.249.nip.io:8080')
+# ATTENTION: ne laissez que des domaines/IP valides (pas de port ici). L'entrée '211.0.249.nip.io' était une faute de frappe
+# (il manque le premier octet '10.'). nip.io attend 4 octets: a.b.c.d.nip.io.
+_raw_hosts = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,10.211.0.249,10.211.0.249.nip.io')
 parsed_hosts = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
 normalized = set()
 for h in parsed_hosts:
