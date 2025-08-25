@@ -14,6 +14,10 @@ echo "Database reachable"
 echo "Applying database migrations..."
 python manage.py migrate --noinput
 
+# S'assurer que le Site par défaut existe
+echo "Ensuring default Site..."
+python manage.py ensure_default_site || true
+
 # Création / MAJ SocialApp Google auto si variables fournies
 echo "Ensuring Google SocialApp (if env vars present)..."
 python manage.py ensure_google_socialapp || true
