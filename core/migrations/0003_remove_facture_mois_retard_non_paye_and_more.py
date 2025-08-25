@@ -11,15 +11,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Sécurisation : s'assurer que les colonnes existent (sinon RemoveField échoue avec 1091)
-        migrations.RunSQL(
-            sql="ALTER TABLE core_facture ADD COLUMN IF NOT EXISTS mois_retard_non_paye INT NULL;",
-            reverse_sql="ALTER TABLE core_facture DROP COLUMN IF EXISTS mois_retard_non_paye;"
-        ),
-        migrations.RunSQL(
-            sql="ALTER TABLE core_facture ADD COLUMN IF NOT EXISTS mois_retard_paye INT NULL;",
-            reverse_sql="ALTER TABLE core_facture DROP COLUMN IF EXISTS mois_retard_paye;"
-        ),
+    # Suppression directe des colonnes (présentes en base fraîche issue de 0002)
         migrations.RemoveField(
             model_name='facture',
             name='mois_retard_non_paye',
