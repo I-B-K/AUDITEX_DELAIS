@@ -14,6 +14,10 @@ echo "Database reachable"
 echo "Applying database migrations..."
 python manage.py migrate --noinput
 
+# Création / MAJ SocialApp Google auto si variables fournies
+echo "Ensuring Google SocialApp (if env vars present)..."
+python manage.py ensure_google_socialapp || true
+
 # Collecter les fichiers statiques
 # (Déjà fait dans le Dockerfile, mais peut être utile ici si les volumes sont modifiés)
 echo "Collecting static files..."
