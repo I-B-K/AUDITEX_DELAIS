@@ -64,8 +64,10 @@
           </button>
         </form>
       </div>
-      <div class="px-8 pb-6 text-center text-xs text-slate-400 dark:text-slate-500">
-        Pas encore de compte ? Authentifiez-vous via Google pour commencer.
+      <div class="px-8 pb-6 text-center text-xs text-slate-500 dark:text-slate-400">
+        Pas encore de compte ?
+        <a href="{% url 'account_signup' %}" class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">Créer un compte</a>
+        {% if GOOGLE_SOCIALAPP_CONFIGURED %} ou continuer avec Google ci-dessus.{% endif %}
       </div>
     </div>
   </div>

@@ -195,9 +195,10 @@ ACCOUNT_UNIQUE_EMAIL = True
 # Rate limiting (remplace LOGIN_ATTEMPTS_LIMIT/TIMEOUT) : 5 tentatives sur 5 min
 ACCOUNT_RATE_LIMITS = { 'login_failed': '5/5m' }
 
-# Configuration des formulaires
+# Configuration des formulaires (login + signup personnalisés)
 ACCOUNT_FORMS = {
-    'login': 'core.forms.CustomLoginForm'
+    'login': 'core.forms.CustomLoginForm',
+    'signup': 'core.forms.CustomSignupForm',
 }
 
 
@@ -214,8 +215,7 @@ SOCIALACCOUNT_PROVIDERS = {
         }
     }
 }
-# Pour utiliser le formulaire de connexion personnalisé
-ACCOUNT_FORMS = {'login': 'core.forms.CustomLoginForm'}
+# (Le dict ACCOUNT_FORMS est déjà défini plus haut.)
 
 # --- Sécurité / reverse proxy ---
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

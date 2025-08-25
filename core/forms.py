@@ -4,9 +4,7 @@ from django.forms import inlineformset_factory
 from core.models import Declaration, Facture, Client, ReleveFacture, UserProfile
 from datetime import date, datetime
 from django.utils import timezone
-from allauth.account.forms import LoginForm
-from django.contrib.auth import get_user_model
-import datetime
+from allauth.account.forms import LoginForm, SignupForm
 
 class RegistrationValidationForm(forms.ModelForm):
     clients = forms.ModelMultipleChoiceField(
@@ -41,7 +39,7 @@ class CustomLoginForm(LoginForm):
         self.fields['login'].label = ""
         self.fields['login'].widget.attrs.update({
             'class': 'appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm',
-            'placeholder': 'Adresse e-mail'
+            'placeholder': "Email ou nom d'utilisateur"
         })
         self.fields['password'].label = ""
         self.fields['password'].widget.attrs.update({
@@ -53,6 +51,26 @@ class CustomLoginForm(LoginForm):
             self.fields['remember'].widget.attrs.update({
                 'class': 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded'
             })
+
+class CustomSignupForm(SignupForm):
+    """Formulaire d'inscription stylisé (username + email + passwords)."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        style = 'appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'
+        field_map = {
+            'username': 'Nom d\'utilisateur',
+            'email': 'Adresse e-mail',
+            'password1': 'Mot de passe',
+            'password2': 'Confirmez le mot de passe',
+        }
+        for name, placeholder in field_map.items():
+            if name in self.fields:
+                self.fields[name].label = ""
+                self.fields[name].widget.attrs.update({'class': style, 'placeholder': placeholder})
+
+    def save(self, request):
+        user = super().save(request)
+        return user
 
 class DeclarationForm(forms.ModelForm):
     """Formulaire pour créer une nouvelle déclaration."""
@@ -177,7 +195,8 @@ class FactureForm(forms.ModelForm):
         (5, 'Mai'), (6, 'Juin'), (7, 'Juillet'), (8, 'Août'),
         (9, 'Septembre'), (10, 'Octobre'), (11, 'Novembre'), (12, 'Décembre')
     ]
-    current_year = datetime.date.today().year
+    # Utiliser date.today() (et non datetime.date.today()) car datetime est la classe importée
+    current_year = date.today().year
     YEAR_CHOICES = [('', '---')] + [(year, year) for year in range(current_year - 5, current_year + 6)]
 
     mois_transaction = forms.TypedChoiceField(
@@ -278,7 +297,7 @@ class FactureForm(forms.ModelForm):
             self.add_error('date_paiement_hors_delai', "Ce champ est requis avec le 'Montant Payé Hors Délai'.")
         
         if montant_paye_hors_delai is None and date_paiement_hors_delai:
-             self.add_error('date_paiement_hors_delai', "Ce champ doit être vide si le 'Montant Payé Hors Délai' est vide.")
+            self.add_error('date_paiement_hors_delai', "Ce champ doit être vide si le 'Montant Payé Hors Délai' est vide.")
 
         # --- Règle 5 : Validation de la section Litige ---
         montant_objet_litige = cleaned_data.get("montant_objet_litige")
@@ -290,7 +309,7 @@ class FactureForm(forms.ModelForm):
             }
             for field_name, field_label in litige_fields.items():
                 if not cleaned_data.get(field_name):
-                    self.add_error(field_name, f"Ce champ est requis car un montant est en litige.")
+                    self.add_error(field_name, "Ce champ est requis car un montant est en litige.")
 
         # --- Règle 6 : Validation du mode et de la référence de paiement ---
         mode_paiement = cleaned_data.get("mode_paiement")

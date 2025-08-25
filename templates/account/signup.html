@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load allauth socialaccount %}
+
+{% block title %}Inscription | {{ block.super }}{% endblock %}
+
+{% block content_unauthenticated %}
+<div class="min-h-screen flex items-center justify-center py-10 px-4 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+  <div class="w-full max-w-md">
+    <div class="relative bg-white/80 dark:bg-slate-800/80 backdrop-blur border border-slate-200 dark:border-slate-700 shadow-xl rounded-2xl overflow-hidden">
+      <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.15),transparent_60%)]"></div>
+      <div class="p-8 relative">
+        <div class="flex flex-col items-center text-center mb-6">
+          <div class="h-14 w-14 rounded-2xl flex items-center justify-center bg-white shadow-inner ring-1 ring-slate-200 dark:ring-slate-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+          </div>
+          <h1 class="mt-5 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Créer un compte</h1>
+          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Accédez à la plateforme de gestion.</p>
+        </div>
+
+        {% if GOOGLE_SOCIALAPP_CONFIGURED %}
+          {% provider_login_url "google" as google_url %}
+          <a href="{{ google_url }}" class="group relative w-full inline-flex items-center justify-center gap-3 rounded-xl bg-white border border-slate-300 hover:border-slate-400 text-slate-800 font-medium py-3 px-4 shadow-sm hover:shadow transition dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600 dark:hover:border-slate-500">
+            <span class="absolute inset-0 rounded-xl bg-gradient-to-r from-[#4285F4] via-[#34A853] to-[#FBBC05] opacity-0 group-hover:opacity-10 transition"></span>
+            <svg class="h-5 w-5" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg"><path fill="#4285f4" d="M533.5 278.4c0-18.5-1.5-37-4.7-55H272v104.2h147.3c-6.4 34.6-26.6 64-56.7 83.5v68h91.3c53.5-49.3 83.6-122.1 83.6-200.7z"/><path fill="#34a853" d="M272 544.3c76.7 0 141.3-25.4 188.4-69.2l-91.3-68c-25.4 17.2-58 27-97.1 27-74.6 0-137.8-50.2-160.4-117.6H17.1v73.9c46 91.3 140.5 153.9 254.9 153.9z"/><path fill="#fbbc04" d="M111.6 316.5c-11.4-34.6-11.4-72 0-106.6V136H17.1c-36.4 72.4-36.4 157.6 0 230l94.5-49.5z"/><path fill="#ea4335" d="M272 107.7c40.7-.6 79.8 14.7 109.7 42.9l81.7-81.7C412.9 24.5 343.8-.9 272 0 157.6 0 63.1 62.6 17.1 153.9l94.5 73.9C134.2 157.9 197.4 107.7 272 107.7z"/></svg>
+            <span>Continuer avec Google</span>
+          </a>
+          <div class="mt-6 flex items-center gap-2 text-xs font-medium text-slate-400 dark:text-slate-500">
+            <div class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300/60 dark:via-slate-600/60 to-transparent"></div>
+            <span>OU</span>
+            <div class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300/60 dark:via-slate-600/60 to-transparent"></div>
+          </div>
+        {% endif %}
+
+        {% if form.non_field_errors %}
+          <div class="mb-4 rounded-md border border-red-300 bg-red-50 text-red-700 text-sm p-3">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="POST" action="{% url 'account_signup' %}" class="mt-6 space-y-5">
+          {% csrf_token %}
+          <div class="space-y-4">
+            {% for field in form %}
+              <div>
+                {{ field.errors.as_ul }}
+                {{ field }}
+              </div>
+            {% endfor %}
+          </div>
+          <button type="submit" class="relative w-full inline-flex items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 text-white font-medium py-3 px-4 shadow transition">
+            <span>S'inscrire</span>
+          </button>
+        </form>
+      </div>
+      <div class="px-8 pb-6 text-center text-xs text-slate-500 dark:text-slate-400">
+        Déjà un compte ? <a href="{% url 'account_login' %}" class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">Se connecter</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
