@@ -13,10 +13,20 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-remplacez-moi-avec-un
 # La valeur 'False' en production est gérée via le .env
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-# ALLOWED_HOSTS : utiliser une seule valeur par défaut (séparée par des virgules). Ne pas inclure le port.
+"""Gestion robuste des hôtes autorisés.
+- Variable d'env ALLOWED_HOSTS = liste séparée par virgules (sans ports).
+- On ajoute les variantes sans port si l'utilisateur a inclus des host:port.
+- Ajout automatique du domaine nip.io si PUBLIC_IP fourni.
+"""
 _raw_hosts = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,10.211.0.249,10.211.0.249.nip.io')
-ALLOWED_HOSTS = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
-# Ajout automatique du domaine nip.io correspondant à une IP publique si fourni
+parsed_hosts = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
+normalized = set()
+for h in parsed_hosts:
+    host_only = h.split(':', 1)[0]
+    if host_only:
+        normalized.add(host_only)
+ALLOWED_HOSTS = sorted(normalized)
+
 PUBLIC_IP = os.environ.get('PUBLIC_IP')
 if PUBLIC_IP:
     nip_host = f"{PUBLIC_IP}.nip.io"
